@@ -222,6 +222,12 @@ export default function HomeScreen() {
   };
 
   const submitForm = async () => {
+    // Prevent multiple submissions
+    if (submitting) {
+      console.log('Submission already in progress, ignoring duplicate click');
+      return;
+    }
+
     try {
       setSubmitting(true);
       console.log('Starting check-in submission...');
@@ -272,6 +278,8 @@ export default function HomeScreen() {
           'Save Failed',
           `Failed to save check-in. Error: ${error.message}. Please try again or contact support.`
         );
+        
+        setSubmitting(false);
         return;
       }
 
@@ -285,6 +293,8 @@ export default function HomeScreen() {
           'Save Failed',
           'Failed to save check-in. No ID returned from database. Please try again.'
         );
+        
+        setSubmitting(false);
         return;
       }
 
@@ -303,8 +313,10 @@ export default function HomeScreen() {
         
         Alert.alert(
           'Save Verification Failed',
-          'The check-in was submitted but could not be verified in the database. Please check the admin panel to confirm it was saved, or try submitting again.'
+          'The check-in was submitted but could not be verified in the database. Please check the admin panel to confirm it was saved.'
         );
+        
+        setSubmitting(false);
         return;
       }
 
@@ -313,20 +325,24 @@ export default function HomeScreen() {
       // Trigger success haptic feedback
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      // Show success message and reset the form
+      // Store the employee and company names for the success message
+      const employeeName = formData.employeeName;
+      const companyName = formData.companyName;
+      
+      // IMMEDIATELY reset the form to prevent duplicate submissions
+      resetFormToBeginning();
+      
+      // Reset submitting state AFTER resetting the form
+      setSubmitting(false);
+      
+      // Show success message AFTER resetting (non-blocking)
       Alert.alert(
-        '✓ Success!',
-        `Check-in saved successfully!\n\nEmployee: ${formData.employeeName}\nCompany: ${formData.companyName}\n\nThe form will now reset for the next check-in.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              resetFormToBeginning();
-            },
-          },
-        ],
-        { cancelable: false }
+        '✓ Check-In Saved Successfully!',
+        `Employee: ${employeeName}\nCompany: ${companyName}\n\nThe form has been reset and is ready for the next check-in.`,
+        [{ text: 'OK' }]
       );
+      
+      console.log('Form reset complete. Ready for next check-in.');
     } catch (error) {
       console.error('Exception during form submission:', error);
       console.error('Exception details:', JSON.stringify(error, null, 2));
@@ -338,7 +354,7 @@ export default function HomeScreen() {
         'Error',
         `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`
       );
-    } finally {
+      
       setSubmitting(false);
     }
   };
