@@ -143,24 +143,30 @@ export default function ReviewStep({
             <Text style={styles.editButtonText}>Edit</Text>
           </TouchableOpacity>
         </View>
-        {formData.categories.map((item, index) => (
-          <View key={index} style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{item.category}:</Text>
-            <Text style={styles.infoValue}>{item.quantity}</Text>
-          </View>
-        ))}
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total:</Text>
-          <Text style={styles.totalValue}>{getTotalCategoryQuantity()}</Text>
-        </View>
+        {formData.categories.length === 0 ? (
+          <Text style={styles.emptyText}>No certificate of destruction material</Text>
+        ) : (
+          <React.Fragment>
+            {formData.categories.map((item, index) => (
+              <View key={index} style={styles.infoRow}>
+                <Text style={styles.infoLabel}>{item.category}:</Text>
+                <Text style={styles.infoValue}>{item.quantity}</Text>
+              </View>
+            ))}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total:</Text>
+              <Text style={styles.totalValue}>{getTotalCategoryQuantity()}</Text>
+            </View>
+          </React.Fragment>
+        )}
       </View>
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderTitle}>Value Materials</Text>
+          <Text style={styles.sectionHeaderTitle}>Value Scrap</Text>
           <TouchableOpacity
             style={styles.editButton}
-            onPress={() => onEdit('value-materials')}
+            onPress={() => onEdit('value-scrap')}
           >
             <IconSymbol
               ios_icon_name="pencil"
@@ -171,11 +177,11 @@ export default function ReviewStep({
             <Text style={styles.editButtonText}>Edit</Text>
           </TouchableOpacity>
         </View>
-        {formData.valueMaterials.length === 0 ? (
-          <Text style={styles.emptyText}>No value materials received</Text>
+        {formData.valueScrap.length === 0 ? (
+          <Text style={styles.emptyText}>No value scrap received</Text>
         ) : (
           <React.Fragment>
-            {formData.valueMaterials.map((item, index) => (
+            {formData.valueScrap.map((item, index) => (
               <View key={index} style={styles.infoRow}>
                 <Text style={styles.infoLabel}>{item.materialName}:</Text>
                 <Text style={styles.infoValue}>
@@ -183,10 +189,10 @@ export default function ReviewStep({
                 </Text>
               </View>
             ))}
-            {formData.valueMaterialsTotals.length > 0 && (
+            {formData.valueScrapTotals.length > 0 && (
               <View style={styles.totalsSection}>
                 <Text style={styles.totalsTitle}>Totals by Unit:</Text>
-                {formData.valueMaterialsTotals.map((total, index) => (
+                {formData.valueScrapTotals.map((total, index) => (
                   <View key={index} style={styles.totalRow}>
                     <Text style={styles.totalLabel}>{total.measurement}:</Text>
                     <Text style={styles.totalValue}>{total.total}</Text>
@@ -243,6 +249,56 @@ export default function ReviewStep({
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
+          <Text style={styles.sectionHeaderTitle}>i-Series / Ryzen</Text>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => onEdit('i-series')}
+          >
+            <IconSymbol
+              ios_icon_name="pencil"
+              android_material_icon_name="edit"
+              size={16}
+              color={colors.primary}
+            />
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.subsection}>
+          <Text style={styles.subsectionTitle}>PCs:</Text>
+          {formData.hasISeriesPcs === false || formData.iSeriesPcs.length === 0 ? (
+            <Text style={styles.emptyText}>None</Text>
+          ) : (
+            formData.iSeriesPcs.map((item, index) => (
+              <View key={index} style={styles.infoRow}>
+                <Text style={styles.infoLabel}>
+                  {item.processorSeries} {item.processorGeneration}:
+                </Text>
+                <Text style={styles.infoValue}>{item.quantity}</Text>
+              </View>
+            ))
+          )}
+        </View>
+
+        <View style={styles.subsection}>
+          <Text style={styles.subsectionTitle}>Laptops:</Text>
+          {formData.hasISeriesLaptops === false || formData.iSeriesLaptops.length === 0 ? (
+            <Text style={styles.emptyText}>None</Text>
+          ) : (
+            formData.iSeriesLaptops.map((item, index) => (
+              <View key={index} style={styles.infoRow}>
+                <Text style={styles.infoLabel}>
+                  {item.processorSeries} {item.processorGeneration}:
+                </Text>
+                <Text style={styles.infoValue}>{item.quantity}</Text>
+              </View>
+            ))
+          )}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderTitle}>Additional Notes</Text>
           <TouchableOpacity
             style={styles.editButton}
@@ -264,7 +320,7 @@ export default function ReviewStep({
           </Text>
         </View>
         <View style={styles.noteSection}>
-          <Text style={styles.noteLabel}>Other Notes / Damages:</Text>
+          <Text style={styles.noteLabel}>Other Notes / Damages / Customer Requests:</Text>
           <Text style={styles.noteValue}>
             {formData.otherNotes || 'None'}
           </Text>
@@ -369,6 +425,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.primary,
+  },
+  subsection: {
+    marginBottom: 12,
+  },
+  subsectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
   },
   infoRow: {
     flexDirection: 'row',

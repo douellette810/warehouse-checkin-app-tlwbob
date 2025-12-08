@@ -24,6 +24,12 @@ export interface Material {
   measurement: string;
 }
 
+export interface ISeriesProcessor {
+  id: string;
+  processor_series: string;
+  processor_generation: string;
+}
+
 export interface CategoryQuantity {
   category: string;
   quantity: string;
@@ -41,6 +47,12 @@ export interface MaterialTotal {
   total: number;
 }
 
+export interface ISeriesEntry {
+  processorSeries: string;
+  processorGeneration: string;
+  quantity: string;
+}
+
 export interface CheckInFormData {
   employeeName: string;
   startedAt: string | null;
@@ -53,10 +65,14 @@ export interface CheckInFormData {
   email: string;
   phone: string;
   categories: CategoryQuantity[];
-  valueMaterials: MaterialQuantity[];
+  valueScrap: MaterialQuantity[];
   chargeMaterials: MaterialQuantity[];
-  valueMaterialsTotals: MaterialTotal[];
+  valueScrapTotals: MaterialTotal[];
   chargeMaterialsTotals: MaterialTotal[];
+  hasISeriesPcs: boolean | null;
+  hasISeriesLaptops: boolean | null;
+  iSeriesPcs: ISeriesEntry[];
+  iSeriesLaptops: ISeriesEntry[];
   suspectedValueNote: string | null;
   otherNotes: string | null;
 }
@@ -64,7 +80,8 @@ export interface CheckInFormData {
 export type FormStep = 
   | 'basic-info'
   | 'categories'
-  | 'value-materials'
+  | 'value-scrap'
   | 'charge-materials'
+  | 'i-series'
   | 'additional-notes'
   | 'review';

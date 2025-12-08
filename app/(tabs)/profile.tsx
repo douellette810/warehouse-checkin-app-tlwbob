@@ -15,7 +15,7 @@ import { colors } from '@/styles/commonStyles';
 import { supabase } from '@/utils/supabase';
 import { IconSymbol } from '@/components/IconSymbol';
 
-type AdminSection = 'employees' | 'companies' | 'categories' | 'value-materials' | 'charge-materials' | 'check-ins';
+type AdminSection = 'employees' | 'companies' | 'categories' | 'value-scrap' | 'charge-materials' | 'i-series' | 'check-ins';
 
 export default function ProfileScreen() {
   const [activeSection, setActiveSection] = useState<AdminSection>('employees');
@@ -34,6 +34,8 @@ export default function ProfileScreen() {
   const [categoryName, setCategoryName] = useState('');
   const [materialName, setMaterialName] = useState('');
   const [materialMeasurement, setMaterialMeasurement] = useState('');
+  const [processorSeries, setProcessorSeries] = useState('');
+  const [processorGeneration, setProcessorGeneration] = useState('');
 
   useEffect(() => {
     loadData();
@@ -53,11 +55,14 @@ export default function ProfileScreen() {
         case 'categories':
           tableName = 'categories';
           break;
-        case 'value-materials':
-          tableName = 'value_materials';
+        case 'value-scrap':
+          tableName = 'value_scrap';
           break;
         case 'charge-materials':
           tableName = 'charge_materials';
+          break;
+        case 'i-series':
+          tableName = 'i_series';
           break;
         case 'check-ins':
           tableName = 'check_ins';
@@ -107,13 +112,17 @@ export default function ProfileScreen() {
           tableName = 'categories';
           insertData = { name: categoryName };
           break;
-        case 'value-materials':
-          tableName = 'value_materials';
+        case 'value-scrap':
+          tableName = 'value_scrap';
           insertData = { name: materialName, measurement: materialMeasurement };
           break;
         case 'charge-materials':
           tableName = 'charge_materials';
           insertData = { name: materialName, measurement: materialMeasurement };
+          break;
+        case 'i-series':
+          tableName = 'i_series';
+          insertData = { processor_series: processorSeries, processor_generation: processorGeneration };
           break;
       }
 
@@ -168,11 +177,14 @@ export default function ProfileScreen() {
                 case 'categories':
                   tableName = 'categories';
                   break;
-                case 'value-materials':
-                  tableName = 'value_materials';
+                case 'value-scrap':
+                  tableName = 'value_scrap';
                   break;
                 case 'charge-materials':
                   tableName = 'charge_materials';
+                  break;
+                case 'i-series':
+                  tableName = 'i_series';
                   break;
               }
 
@@ -236,6 +248,8 @@ export default function ProfileScreen() {
     setCategoryName('');
     setMaterialName('');
     setMaterialMeasurement('');
+    setProcessorSeries('');
+    setProcessorGeneration('');
   };
 
   const renderAddForm = () => {
@@ -302,7 +316,7 @@ export default function ProfileScreen() {
             placeholderTextColor={colors.textSecondary}
           />
         );
-      case 'value-materials':
+      case 'value-scrap':
       case 'charge-materials':
         return (
           <React.Fragment>
@@ -318,6 +332,25 @@ export default function ProfileScreen() {
               value={materialMeasurement}
               onChangeText={setMaterialMeasurement}
               placeholder="Measurement (e.g., Lbs., Pcs.)"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </React.Fragment>
+        );
+      case 'i-series':
+        return (
+          <React.Fragment>
+            <TextInput
+              style={styles.input}
+              value={processorSeries}
+              onChangeText={setProcessorSeries}
+              placeholder="Processor Series (e.g., i3, i5, Ryzen 5)"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <TextInput
+              style={styles.input}
+              value={processorGeneration}
+              onChangeText={setProcessorGeneration}
+              placeholder="Processor Generation (e.g., 10th, 11th, N/A)"
               placeholderTextColor={colors.textSecondary}
             />
           </React.Fragment>
@@ -390,7 +423,7 @@ export default function ProfileScreen() {
 
         <View style={styles.detailSection}>
           <Text style={styles.detailSectionTitle}>Certificate of Destruction</Text>
-          {selectedCheckIn.categories && Array.isArray(selectedCheckIn.categories) ? (
+          {selectedCheckIn.categories && Array.isArray(selectedCheckIn.categories) && selectedCheckIn.categories.length > 0 ? (
             <React.Fragment>
               {selectedCheckIn.categories.map((item: any, index: number) => (
                 <View key={index} style={styles.detailRow}>
@@ -409,19 +442,19 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.detailSection}>
-          <Text style={styles.detailSectionTitle}>Value Materials</Text>
-          {selectedCheckIn.value_materials && Array.isArray(selectedCheckIn.value_materials) && selectedCheckIn.value_materials.length > 0 ? (
+          <Text style={styles.detailSectionTitle}>Value Scrap</Text>
+          {selectedCheckIn.value_scrap && Array.isArray(selectedCheckIn.value_scrap) && selectedCheckIn.value_scrap.length > 0 ? (
             <React.Fragment>
-              {selectedCheckIn.value_materials.map((item: any, index: number) => (
+              {selectedCheckIn.value_scrap.map((item: any, index: number) => (
                 <View key={index} style={styles.detailRow}>
                   <Text style={styles.detailLabel}>{item.materialName}:</Text>
                   <Text style={styles.detailValue}>{item.quantity} {item.measurement}</Text>
                 </View>
               ))}
-              {selectedCheckIn.value_materials_totals && Array.isArray(selectedCheckIn.value_materials_totals) && selectedCheckIn.value_materials_totals.length > 0 && (
+              {selectedCheckIn.value_scrap_totals && Array.isArray(selectedCheckIn.value_scrap_totals) && selectedCheckIn.value_scrap_totals.length > 0 && (
                 <View style={styles.totalsSection}>
                   <Text style={styles.totalsTitle}>Totals by Unit:</Text>
-                  {selectedCheckIn.value_materials_totals.map((total: any, index: number) => (
+                  {selectedCheckIn.value_scrap_totals.map((total: any, index: number) => (
                     <View key={index} style={styles.totalRow}>
                       <Text style={styles.totalLabel}>{total.measurement}:</Text>
                       <Text style={styles.totalValue}>{total.total}</Text>
@@ -431,7 +464,7 @@ export default function ProfileScreen() {
               )}
             </React.Fragment>
           ) : (
-            <Text style={styles.emptyText}>No value materials</Text>
+            <Text style={styles.emptyText}>No value scrap</Text>
           )}
         </View>
 
@@ -463,13 +496,45 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>i-Series / Ryzen</Text>
+          
+          <View style={styles.subsection}>
+            <Text style={styles.subsectionTitle}>PCs:</Text>
+            {selectedCheckIn.i_series_pcs && Array.isArray(selectedCheckIn.i_series_pcs) && selectedCheckIn.i_series_pcs.length > 0 ? (
+              selectedCheckIn.i_series_pcs.map((item: any, index: number) => (
+                <View key={index} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.processorSeries} {item.processorGeneration}:</Text>
+                  <Text style={styles.detailValue}>{item.quantity}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>None</Text>
+            )}
+          </View>
+
+          <View style={styles.subsection}>
+            <Text style={styles.subsectionTitle}>Laptops:</Text>
+            {selectedCheckIn.i_series_laptops && Array.isArray(selectedCheckIn.i_series_laptops) && selectedCheckIn.i_series_laptops.length > 0 ? (
+              selectedCheckIn.i_series_laptops.map((item: any, index: number) => (
+                <View key={index} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.processorSeries} {item.processorGeneration}:</Text>
+                  <Text style={styles.detailValue}>{item.quantity}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>None</Text>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.detailSection}>
           <Text style={styles.detailSectionTitle}>Additional Notes</Text>
           <View style={styles.noteSection}>
             <Text style={styles.noteLabel}>Suspected Value:</Text>
             <Text style={styles.noteValue}>{selectedCheckIn.suspected_value_note || 'None'}</Text>
           </View>
           <View style={styles.noteSection}>
-            <Text style={styles.noteLabel}>Other Notes / Damages:</Text>
+            <Text style={styles.noteLabel}>Other Notes / Damages / Customer Requests:</Text>
             <Text style={styles.noteValue}>{selectedCheckIn.other_notes || 'None'}</Text>
           </View>
         </View>
@@ -525,13 +590,30 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         );
-      case 'value-materials':
+      case 'value-scrap':
       case 'charge-materials':
         return (
           <View key={item.id} style={styles.dataItem}>
             <View style={styles.dataItemContent}>
               <Text style={styles.dataItemTitle}>{item.name}</Text>
               <Text style={styles.dataItemSubtext}>Measurement: {item.measurement}</Text>
+            </View>
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
+              <IconSymbol
+                ios_icon_name="trash.fill"
+                android_material_icon_name="delete"
+                size={20}
+                color={colors.secondary}
+              />
+            </TouchableOpacity>
+          </View>
+        );
+      case 'i-series':
+        return (
+          <View key={item.id} style={styles.dataItem}>
+            <View style={styles.dataItemContent}>
+              <Text style={styles.dataItemTitle}>{item.processor_series}</Text>
+              <Text style={styles.dataItemSubtext}>Generation: {item.processor_generation}</Text>
             </View>
             <TouchableOpacity onPress={() => handleDelete(item.id)}>
               <IconSymbol
@@ -608,11 +690,11 @@ export default function ProfileScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeSection === 'value-materials' && styles.tabActive]}
-          onPress={() => setActiveSection('value-materials')}
+          style={[styles.tab, activeSection === 'value-scrap' && styles.tabActive]}
+          onPress={() => setActiveSection('value-scrap')}
         >
-          <Text style={[styles.tabText, activeSection === 'value-materials' && styles.tabTextActive]}>
-            Value Materials
+          <Text style={[styles.tabText, activeSection === 'value-scrap' && styles.tabTextActive]}>
+            Value Scrap
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -621,6 +703,14 @@ export default function ProfileScreen() {
         >
           <Text style={[styles.tabText, activeSection === 'charge-materials' && styles.tabTextActive]}>
             Charge Materials
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeSection === 'i-series' && styles.tabActive]}
+          onPress={() => setActiveSection('i-series')}
+        >
+          <Text style={[styles.tabText, activeSection === 'i-series' && styles.tabTextActive]}>
+            i-Series
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -938,6 +1028,15 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  subsection: {
+    marginBottom: 12,
+  },
+  subsectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
   },
   detailRow: {
     flexDirection: 'row',

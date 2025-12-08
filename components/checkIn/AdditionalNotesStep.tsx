@@ -78,7 +78,7 @@ export default function AdditionalNotesStep({
 
       <View style={styles.questionCard}>
         <Text style={styles.questionText}>
-          Is there anything else of suspected value in this load?
+          Is there anything else of suspected value in this load? (e.g. Test Equipment, Newer Servers (DDR4), Newer Devices, etc.)
         </Text>
 
         <View style={styles.buttonGroup}>
@@ -133,7 +133,7 @@ export default function AdditionalNotesStep({
 
       <View style={styles.questionCard}>
         <Text style={styles.questionText}>
-          Other notes / Damages?
+          Other Notes / Damages / Customer Requests?
         </Text>
 
         <View style={styles.buttonGroup}>
@@ -251,7 +251,7 @@ export default function AdditionalNotesStep({
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Other Notes / Damages</Text>
+            <Text style={styles.modalTitle}>Other Notes / Damages / Customer Requests</Text>
             <TextInput
               style={styles.textArea}
               value={otherNotesText}
@@ -317,6 +317,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 16,
+    lineHeight: 24,
   },
   buttonGroup: {
     flexDirection: 'row',
