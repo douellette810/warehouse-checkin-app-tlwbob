@@ -33,12 +33,53 @@ export default function ReviewStep({
     }, 0);
   };
 
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return 'Not recorded';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const calculateDuration = () => {
+    if (!formData.startedAt || !formData.finishedAt) return 'N/A';
+    const start = new Date(formData.startedAt);
+    const finish = new Date(formData.finishedAt);
+    const durationMs = finish.getTime() - start.getTime();
+    const minutes = Math.floor(durationMs / 60000);
+    const seconds = Math.floor((durationMs % 60000) / 1000);
+    return `${minutes} min ${seconds} sec`;
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>Review Your Submission</Text>
       <Text style={styles.sectionDescription}>
         Please review all information before submitting
       </Text>
+
+      <View style={styles.timestampSection}>
+        <Text style={styles.timestampTitle}>Form Timestamps</Text>
+        <View style={styles.timestampRow}>
+          <Text style={styles.timestampLabel}>Started:</Text>
+          <Text style={styles.timestampValue}>{formatDateTime(formData.startedAt)}</Text>
+        </View>
+        <View style={styles.timestampRow}>
+          <Text style={styles.timestampLabel}>Finished:</Text>
+          <Text style={styles.timestampValue}>{formatDateTime(formData.finishedAt)}</Text>
+        </View>
+        <View style={styles.timestampRow}>
+          <Text style={styles.timestampLabel}>Duration:</Text>
+          <Text style={styles.timestampValue}>{calculateDuration()}</Text>
+        </View>
+      </View>
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -59,14 +100,6 @@ export default function ReviewStep({
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Employee Name:</Text>
           <Text style={styles.infoValue}>{formData.employeeName}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Date:</Text>
-          <Text style={styles.infoValue}>{formData.date}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Time:</Text>
-          <Text style={styles.infoValue}>{formData.time}</Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Total Time:</Text>
@@ -251,6 +284,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 24,
+  },
+  timestampSection: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  timestampTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  timestampRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  timestampLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  timestampValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   section: {
     backgroundColor: colors.card,

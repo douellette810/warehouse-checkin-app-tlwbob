@@ -7,11 +7,9 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
-  Platform,
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { Employee, Company, CheckInFormData } from '@/types/checkIn';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface BasicInfoStepProps {
   formData: CheckInFormData;
@@ -30,8 +28,6 @@ export default function BasicInfoStep({
 }: BasicInfoStepProps) {
   const [showEmployeePicker, setShowEmployeePicker] = useState(false);
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [showTotalTimePicker, setShowTotalTimePicker] = useState(false);
 
   const timeOptions = [
@@ -56,23 +52,6 @@ export default function BasicInfoStep({
     setShowCompanyPicker(false);
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      const dateString = selectedDate.toISOString().split('T')[0];
-      updateFormData({ date: dateString });
-    }
-  };
-
-  const handleTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(Platform.OS === 'ios');
-    if (selectedTime) {
-      const hours = selectedTime.getHours().toString().padStart(2, '0');
-      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
-      updateFormData({ time: `${hours}:${minutes}` });
-    }
-  };
-
   const handleTotalTimeSelect = (time: string) => {
     updateFormData({ totalTime: time });
     setShowTotalTimePicker(false);
@@ -81,11 +60,22 @@ export default function BasicInfoStep({
   const isFormValid = () => {
     return (
       formData.employeeName &&
-      formData.date &&
-      formData.time &&
       formData.totalTime &&
       formData.companyId
     );
+  };
+
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return 'Not recorded';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
   };
 
   return (
@@ -95,6 +85,13 @@ export default function BasicInfoStep({
         Please fill in all required fields to continue
       </Text>
 
+      {formData.startedAt && (
+        <View style={styles.timestampSection}>
+          <Text style={styles.timestampLabel}>Form Started:</Text>
+          <Text style={styles.timestampValue}>{formatDateTime(formData.startedAt)}</Text>
+        </View>
+      )}
+
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>Employee Name *</Text>
         <TouchableOpacity
@@ -103,30 +100,6 @@ export default function BasicInfoStep({
         >
           <Text style={formData.employeeName ? styles.pickerText : styles.placeholderText}>
             {formData.employeeName || 'Select Employee'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Date *</Text>
-        <TouchableOpacity
-          style={styles.picker}
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text style={formData.date ? styles.pickerText : styles.placeholderText}>
-            {formData.date || 'Select Date'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Time *</Text>
-        <TouchableOpacity
-          style={styles.picker}
-          onPress={() => setShowTimePicker(true)}
-        >
-          <Text style={formData.time ? styles.pickerText : styles.placeholderText}>
-            {formData.time || 'Select Time'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -281,28 +254,6 @@ export default function BasicInfoStep({
           </View>
         </View>
       </Modal>
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={formData.date ? new Date(formData.date) : new Date()}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-        />
-      )}
-
-      {showTimePicker && (
-        <DateTimePicker
-          value={
-            formData.time
-              ? new Date(`2000-01-01T${formData.time}`)
-              : new Date()
-          }
-          mode="time"
-          display="default"
-          onChange={handleTimeChange}
-        />
-      )}
     </View>
   );
 }
@@ -321,6 +272,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 24,
+  },
+  timestampSection: {
+    backgroundColor: colors.highlight,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  timestampLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  timestampValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
   },
   fieldContainer: {
     marginBottom: 20,

@@ -30,8 +30,8 @@ export default function HomeScreen() {
   
   const [formData, setFormData] = useState<CheckInFormData>({
     employeeName: '',
-    date: '',
-    time: '',
+    startedAt: null,
+    finishedAt: null,
     totalTime: '',
     companyId: '',
     companyName: '',
@@ -48,6 +48,11 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadData();
+    // Record the start time when the form is first loaded
+    setFormData(prev => ({
+      ...prev,
+      startedAt: new Date().toISOString(),
+    }));
   }, []);
 
   const loadData = async () => {
@@ -120,7 +125,16 @@ export default function HomeScreen() {
     ];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
-      setCurrentStep(steps[currentIndex + 1]);
+      const nextStep = steps[currentIndex + 1];
+      setCurrentStep(nextStep);
+      
+      // If moving to review step, record the finish time
+      if (nextStep === 'review') {
+        setFormData(prev => ({
+          ...prev,
+          finishedAt: new Date().toISOString(),
+        }));
+      }
     }
   };
 
@@ -147,10 +161,13 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       
+      // Ensure finishedAt is set
+      const finishedAt = formData.finishedAt || new Date().toISOString();
+      
       const { error } = await supabase.from('check_ins').insert({
         employee_name: formData.employeeName,
-        date: formData.date,
-        time: formData.time,
+        started_at: formData.startedAt,
+        finished_at: finishedAt,
         total_time: formData.totalTime,
         company_id: formData.companyId,
         company_name: formData.companyName,
@@ -173,10 +190,11 @@ export default function HomeScreen() {
           {
             text: 'OK',
             onPress: () => {
+              // Reset form and record new start time
               setFormData({
                 employeeName: '',
-                date: '',
-                time: '',
+                startedAt: new Date().toISOString(),
+                finishedAt: null,
                 totalTime: '',
                 companyId: '',
                 companyName: '',

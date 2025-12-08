@@ -38,8 +38,8 @@ export interface MaterialQuantity {
 
 export interface CheckInFormData {
   employeeName: string;
-  date: string;
-  time: string;
+  startedAt: string | null;
+  finishedAt: string | null;
   totalTime: string;
   companyId: string;
   companyName: string;
