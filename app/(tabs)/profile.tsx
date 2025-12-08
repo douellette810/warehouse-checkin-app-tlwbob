@@ -10,15 +10,18 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { supabase } from '@/utils/supabase';
 import { IconSymbol } from '@/components/IconSymbol';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 
 type AdminSection = 'employees' | 'companies' | 'categories' | 'value-scrap' | 'charge-materials' | 'i-series' | 'check-ins';
 
 export default function ProfileScreen() {
-  const [activeSection, setActiveSection] = useState<AdminSection>('employees');
+  const [activeSection, setActiveSection] = useState<AdminSection>('check-ins');
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -236,6 +239,206 @@ export default function ProfileScreen() {
     const minutes = Math.floor(durationMs / 60000);
     const seconds = Math.floor((durationMs % 60000) / 1000);
     return `${minutes} min ${seconds} sec`;
+  };
+
+  const generateCheckInText = (checkIn: any) => {
+    const getTotalCategoryQuantity = () => {
+      if (!checkIn.categories || !Array.isArray(checkIn.categories)) return 0;
+      return checkIn.categories.reduce((total: number, item: any) => {
+        const qty = parseFloat(item.quantity) || 0;
+        return total + qty;
+      }, 0);
+    };
+
+    let text = '═══════════════════════════════════════\n';
+    text += '        WAREHOUSE CHECK-IN REPORT\n';
+    text += '═══════════════════════════════════════\n\n';
+
+    text += '─────────────────────────────────────\n';
+    text += 'FORM TIMESTAMPS\n';
+    text += '─────────────────────────────────────\n';
+    text += `Started:  ${formatDateTime(checkIn.started_at)}\n`;
+    text += `Finished: ${formatDateTime(checkIn.finished_at)}\n`;
+    text += `Duration: ${calculateDuration(checkIn.started_at, checkIn.finished_at)}\n\n`;
+
+    text += '─────────────────────────────────────\n';
+    text += 'BASIC INFORMATION\n';
+    text += '─────────────────────────────────────\n';
+    text += `Employee:     ${checkIn.employee_name}\n`;
+    text += `Total Time:   ${checkIn.total_time} hrs\n`;
+    text += `Company:      ${checkIn.company_name}\n`;
+    text += `Address:      ${checkIn.address}\n`;
+    text += `Contact:      ${checkIn.contact_person}\n`;
+    text += `Email:        ${checkIn.email}\n`;
+    text += `Phone:        ${checkIn.phone}\n\n`;
+
+    text += '─────────────────────────────────────\n';
+    text += 'CERTIFICATE OF DESTRUCTION\n';
+    text += '─────────────────────────────────────\n';
+    if (checkIn.categories && Array.isArray(checkIn.categories) && checkIn.categories.length > 0) {
+      checkIn.categories.forEach((item: any) => {
+        text += `${item.category}: ${item.quantity}\n`;
+      });
+      text += `\nTOTAL: ${getTotalCategoryQuantity()}\n\n`;
+    } else {
+      text += 'No categories\n\n';
+    }
+
+    text += '─────────────────────────────────────\n';
+    text += 'VALUE SCRAP\n';
+    text += '─────────────────────────────────────\n';
+    if (checkIn.value_scrap && Array.isArray(checkIn.value_scrap) && checkIn.value_scrap.length > 0) {
+      checkIn.value_scrap.forEach((item: any) => {
+        text += `${item.materialName}: ${item.quantity} ${item.measurement}\n`;
+      });
+      if (checkIn.value_scrap_totals && Array.isArray(checkIn.value_scrap_totals) && checkIn.value_scrap_totals.length > 0) {
+        text += '\nTotals by Unit:\n';
+        checkIn.value_scrap_totals.forEach((total: any) => {
+          text += `  ${total.measurement}: ${total.total}\n`;
+        });
+      }
+      text += '\n';
+    } else {
+      text += 'No value scrap\n\n';
+    }
+
+    text += '─────────────────────────────────────\n';
+    text += 'CHARGE MATERIALS\n';
+    text += '─────────────────────────────────────\n';
+    if (checkIn.charge_materials && Array.isArray(checkIn.charge_materials) && checkIn.charge_materials.length > 0) {
+      checkIn.charge_materials.forEach((item: any) => {
+        text += `${item.materialName}: ${item.quantity} ${item.measurement}\n`;
+      });
+      if (checkIn.charge_materials_totals && Array.isArray(checkIn.charge_materials_totals) && checkIn.charge_materials_totals.length > 0) {
+        text += '\nTotals by Unit:\n';
+        checkIn.charge_materials_totals.forEach((total: any) => {
+          text += `  ${total.measurement}: ${total.total}\n`;
+        });
+      }
+      text += '\n';
+    } else {
+      text += 'No charge materials\n\n';
+    }
+
+    text += '─────────────────────────────────────\n';
+    text += 'i-SERIES / RYZEN\n';
+    text += '─────────────────────────────────────\n';
+    text += 'PCs:\n';
+    if (checkIn.i_series_pcs && Array.isArray(checkIn.i_series_pcs) && checkIn.i_series_pcs.length > 0) {
+      checkIn.i_series_pcs.forEach((item: any) => {
+        text += `  ${item.processorSeries} ${item.processorGeneration}: ${item.quantity}\n`;
+      });
+    } else {
+      text += '  None\n';
+    }
+    text += '\nLaptops:\n';
+    if (checkIn.i_series_laptops && Array.isArray(checkIn.i_series_laptops) && checkIn.i_series_laptops.length > 0) {
+      checkIn.i_series_laptops.forEach((item: any) => {
+        text += `  ${item.processorSeries} ${item.processorGeneration}: ${item.quantity}\n`;
+      });
+    } else {
+      text += '  None\n';
+    }
+    text += '\n';
+
+    text += '─────────────────────────────────────\n';
+    text += 'ADDITIONAL NOTES\n';
+    text += '─────────────────────────────────────\n';
+    text += `Suspected Value:\n${checkIn.suspected_value_note || 'None'}\n\n`;
+    text += `Other Notes / Damages / Customer Requests:\n${checkIn.other_notes || 'None'}\n\n`;
+
+    text += '═══════════════════════════════════════\n';
+    text += `Generated: ${new Date().toLocaleString('en-US')}\n`;
+    text += '═══════════════════════════════════════\n';
+
+    return text;
+  };
+
+  const handlePrintCheckIn = async () => {
+    if (!selectedCheckIn) return;
+
+    try {
+      const checkInText = generateCheckInText(selectedCheckIn);
+      const fileName = `check-in-${selectedCheckIn.company_name.replace(/[^a-z0-9]/gi, '_')}-${new Date().getTime()}.txt`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+
+      console.log('Saving check-in to:', fileUri);
+
+      await FileSystem.writeAsStringAsync(fileUri, checkInText, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      console.log('File saved successfully');
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/plain',
+          dialogTitle: 'Share Check-In Report',
+          UTI: 'public.plain-text',
+        });
+        console.log('File shared successfully');
+      } else {
+        Alert.alert(
+          'File Saved',
+          `Check-in report saved to:\n${fileUri}\n\nYou can find it in your device's file manager.`
+        );
+      }
+    } catch (error) {
+      console.error('Error sharing check-in:', error);
+      Alert.alert('Error', 'Failed to share check-in. Please try again.');
+    }
+  };
+
+  const handleShareAllCheckIns = async () => {
+    if (data.length === 0) {
+      Alert.alert('No Data', 'There are no check-ins to share.');
+      return;
+    }
+
+    try {
+      let allCheckInsText = '═══════════════════════════════════════\n';
+      allCheckInsText += '   ALL WAREHOUSE CHECK-IN REPORTS\n';
+      allCheckInsText += '═══════════════════════════════════════\n\n';
+      allCheckInsText += `Total Check-Ins: ${data.length}\n`;
+      allCheckInsText += `Generated: ${new Date().toLocaleString('en-US')}\n\n`;
+
+      data.forEach((checkIn, index) => {
+        allCheckInsText += `\n\n${'═'.repeat(39)}\n`;
+        allCheckInsText += `CHECK-IN #${index + 1}\n`;
+        allCheckInsText += `${'═'.repeat(39)}\n\n`;
+        allCheckInsText += generateCheckInText(checkIn);
+      });
+
+      const fileName = `all-check-ins-${new Date().getTime()}.txt`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+
+      console.log('Saving all check-ins to:', fileUri);
+
+      await FileSystem.writeAsStringAsync(fileUri, allCheckInsText, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      console.log('File saved successfully');
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/plain',
+          dialogTitle: 'Share All Check-In Reports',
+          UTI: 'public.plain-text',
+        });
+        console.log('File shared successfully');
+      } else {
+        Alert.alert(
+          'File Saved',
+          `All check-in reports saved to:\n${fileUri}\n\nYou can find it in your device's file manager.`
+        );
+      }
+    } catch (error) {
+      console.error('Error sharing all check-ins:', error);
+      Alert.alert('Error', 'Failed to share check-ins. Please try again.');
+    }
   };
 
   const resetForm = () => {
@@ -538,6 +741,16 @@ export default function ProfileScreen() {
             <Text style={styles.noteValue}>{selectedCheckIn.other_notes || 'None'}</Text>
           </View>
         </View>
+
+        <TouchableOpacity style={styles.shareButton} onPress={handlePrintCheckIn}>
+          <IconSymbol
+            ios_icon_name="square.and.arrow.up.fill"
+            android_material_icon_name="share"
+            size={20}
+            color="#FFFFFF"
+          />
+          <Text style={styles.shareButtonText}>Share / Print This Check-In</Text>
+        </TouchableOpacity>
       </ScrollView>
     );
   };
@@ -656,7 +869,7 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Admin Panel</Text>
-        <Text style={styles.headerSubtitle}>Manage warehouse data</Text>
+        <Text style={styles.headerSubtitle}>Manage warehouse data and view check-ins</Text>
       </View>
 
       <ScrollView
@@ -665,6 +878,14 @@ export default function ProfileScreen() {
         style={styles.tabsContainer}
         contentContainerStyle={styles.tabsContent}
       >
+        <TouchableOpacity
+          style={[styles.tab, activeSection === 'check-ins' && styles.tabActive]}
+          onPress={() => setActiveSection('check-ins')}
+        >
+          <Text style={[styles.tabText, activeSection === 'check-ins' && styles.tabTextActive]}>
+            Check-Ins ({data.length})
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeSection === 'employees' && styles.tabActive]}
           onPress={() => setActiveSection('employees')}
@@ -713,17 +934,24 @@ export default function ProfileScreen() {
             i-Series
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeSection === 'check-ins' && styles.tabActive]}
-          onPress={() => setActiveSection('check-ins')}
-        >
-          <Text style={[styles.tabText, activeSection === 'check-ins' && styles.tabTextActive]}>
-            Check-Ins ({data.length})
-          </Text>
-        </TouchableOpacity>
       </ScrollView>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        {activeSection === 'check-ins' && data.length > 0 && (
+          <TouchableOpacity
+            style={styles.shareAllButton}
+            onPress={handleShareAllCheckIns}
+          >
+            <IconSymbol
+              ios_icon_name="square.and.arrow.up.fill"
+              android_material_icon_name="share"
+              size={24}
+              color="#FFFFFF"
+            />
+            <Text style={styles.shareAllButtonText}>Share / Print All Check-Ins</Text>
+          </TouchableOpacity>
+        )}
+
         {activeSection !== 'check-ins' && (
           <TouchableOpacity
             style={styles.addButton}
@@ -882,6 +1110,37 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   addButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  shareAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.secondary,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
+  },
+  shareAllButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.secondary,
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  shareButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',

@@ -1,75 +1,1360 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { IconSymbol } from "@/components/IconSymbol";
-import { GlassView } from "expo-glass-effect";
-import { useTheme } from "@react-navigation/native";
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
+import { colors } from '@/styles/commonStyles';
+import { supabase } from '@/utils/supabase';
+import { IconSymbol } from '@/components/IconSymbol';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+
+type AdminSection = 'employees' | 'companies' | 'categories' | 'value-scrap' | 'charge-materials' | 'i-series' | 'check-ins';
 
 export default function ProfileScreen() {
-  const theme = useTheme();
+  const [activeSection, setActiveSection] = useState<AdminSection>('check-ins');
+  const [loading, setLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
+  const [data, setData] = useState<any[]>([]);
+
+  const [employeeName, setEmployeeName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [companyContact, setCompanyContact] = useState('');
+  const [companyEmail, setCompanyEmail] = useState('');
+  const [companyPhone, setCompanyPhone] = useState('');
+  const [categoryName, setCategoryName] = useState('');
+  const [materialName, setMaterialName] = useState('');
+  const [materialMeasurement, setMaterialMeasurement] = useState('');
+  const [processorSeries, setProcessorSeries] = useState('');
+  const [processorGeneration, setProcessorGeneration] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, [activeSection]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      let tableName = '';
+      switch (activeSection) {
+        case 'employees':
+          tableName = 'employees';
+          break;
+        case 'companies':
+          tableName = 'companies';
+          break;
+        case 'categories':
+          tableName = 'categories';
+          break;
+        case 'value-scrap':
+          tableName = 'value_scrap';
+          break;
+        case 'charge-materials':
+          tableName = 'charge_materials';
+          break;
+        case 'i-series':
+          tableName = 'i_series';
+          break;
+        case 'check-ins':
+          tableName = 'check_ins';
+          break;
+      }
+
+      const { data: result, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.log('Error loading data:', error);
+      } else {
+        console.log(`Loaded ${result?.length || 0} items from ${tableName}`);
+        setData(result || []);
+      }
+    } catch (error) {
+      console.log('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdd = async () => {
+    setLoading(true);
+    try {
+      let tableName = '';
+      let insertData: any = {};
+
+      switch (activeSection) {
+        case 'employees':
+          tableName = 'employees';
+          insertData = { name: employeeName };
+          break;
+        case 'companies':
+          tableName = 'companies';
+          insertData = {
+            name: companyName,
+            address: companyAddress,
+            contact_person: companyContact,
+            email: companyEmail,
+            phone: companyPhone,
+          };
+          break;
+        case 'categories':
+          tableName = 'categories';
+          insertData = { name: categoryName };
+          break;
+        case 'value-scrap':
+          tableName = 'value_scrap';
+          insertData = { name: materialName, measurement: materialMeasurement };
+          break;
+        case 'charge-materials':
+          tableName = 'charge_materials';
+          insertData = { name: materialName, measurement: materialMeasurement };
+          break;
+        case 'i-series':
+          tableName = 'i_series';
+          insertData = { processor_series: processorSeries, processor_generation: processorGeneration };
+          break;
+      }
+
+      const { error } = await supabase.from(tableName).insert(insertData);
+
+      if (error) {
+        console.log('Error adding data:', error);
+        Alert.alert('Error', 'Failed to add item. Please try again.');
+      } else {
+        Alert.alert('Success', 'Item added successfully!');
+        resetForm();
+        setShowAddModal(false);
+        loadData();
+      }
+    } catch (error) {
+      console.log('Error adding data:', error);
+      Alert.alert('Error', 'Failed to add item. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    // Don't allow deletion of check-ins
+    if (activeSection === 'check-ins') {
+      Alert.alert(
+        'Cannot Delete',
+        'Check-ins cannot be deleted for record-keeping purposes. They are permanent records.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this item?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              let tableName = '';
+              switch (activeSection) {
+                case 'employees':
+                  tableName = 'employees';
+                  break;
+                case 'companies':
+                  tableName = 'companies';
+                  break;
+                case 'categories':
+                  tableName = 'categories';
+                  break;
+                case 'value-scrap':
+                  tableName = 'value_scrap';
+                  break;
+                case 'charge-materials':
+                  tableName = 'charge_materials';
+                  break;
+                case 'i-series':
+                  tableName = 'i_series';
+                  break;
+              }
+
+              const { error } = await supabase.from(tableName).delete().eq('id', id);
+
+              if (error) {
+                console.log('Error deleting data:', error);
+                Alert.alert('Error', 'Failed to delete item. Please try again.');
+              } else {
+                loadData();
+              }
+            } catch (error) {
+              console.log('Error deleting data:', error);
+              Alert.alert('Error', 'Failed to delete item. Please try again.');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleViewCheckIn = (checkIn: any) => {
+    setSelectedCheckIn(checkIn);
+    setShowViewModal(true);
+  };
+
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return 'Not recorded';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const calculateDuration = (startedAt: string | null, finishedAt: string | null) => {
+    if (!startedAt || !finishedAt) return 'N/A';
+    const start = new Date(startedAt);
+    const finish = new Date(finishedAt);
+    const durationMs = finish.getTime() - start.getTime();
+    const minutes = Math.floor(durationMs / 60000);
+    const seconds = Math.floor((durationMs % 60000) / 1000);
+    return `${minutes} min ${seconds} sec`;
+  };
+
+  const generateCheckInText = (checkIn: any) => {
+    const getTotalCategoryQuantity = () => {
+      if (!checkIn.categories || !Array.isArray(checkIn.categories)) return 0;
+      return checkIn.categories.reduce((total: number, item: any) => {
+        const qty = parseFloat(item.quantity) || 0;
+        return total + qty;
+      }, 0);
+    };
+
+    let text = '═══════════════════════════════════════\n';
+    text += '        WAREHOUSE CHECK-IN REPORT\n';
+    text += '═══════════════════════════════════════\n\n';
+
+    text += '─────────────────────────────────────\n';
+    text += 'FORM TIMESTAMPS\n';
+    text += '─────────────────────────────────────\n';
+    text += `Started:  ${formatDateTime(checkIn.started_at)}\n`;
+    text += `Finished: ${formatDateTime(checkIn.finished_at)}\n`;
+    text += `Duration: ${calculateDuration(checkIn.started_at, checkIn.finished_at)}\n\n`;
+
+    text += '─────────────────────────────────────\n';
+    text += 'BASIC INFORMATION\n';
+    text += '─────────────────────────────────────\n';
+    text += `Employee:     ${checkIn.employee_name}\n`;
+    text += `Total Time:   ${checkIn.total_time} hrs\n`;
+    text += `Company:      ${checkIn.company_name}\n`;
+    text += `Address:      ${checkIn.address}\n`;
+    text += `Contact:      ${checkIn.contact_person}\n`;
+    text += `Email:        ${checkIn.email}\n`;
+    text += `Phone:        ${checkIn.phone}\n\n`;
+
+    text += '─────────────────────────────────────\n';
+    text += 'CERTIFICATE OF DESTRUCTION\n';
+    text += '─────────────────────────────────────\n';
+    if (checkIn.categories && Array.isArray(checkIn.categories) && checkIn.categories.length > 0) {
+      checkIn.categories.forEach((item: any) => {
+        text += `${item.category}: ${item.quantity}\n`;
+      });
+      text += `\nTOTAL: ${getTotalCategoryQuantity()}\n\n`;
+    } else {
+      text += 'No categories\n\n';
+    }
+
+    text += '─────────────────────────────────────\n';
+    text += 'VALUE SCRAP\n';
+    text += '─────────────────────────────────────\n';
+    if (checkIn.value_scrap && Array.isArray(checkIn.value_scrap) && checkIn.value_scrap.length > 0) {
+      checkIn.value_scrap.forEach((item: any) => {
+        text += `${item.materialName}: ${item.quantity} ${item.measurement}\n`;
+      });
+      if (checkIn.value_scrap_totals && Array.isArray(checkIn.value_scrap_totals) && checkIn.value_scrap_totals.length > 0) {
+        text += '\nTotals by Unit:\n';
+        checkIn.value_scrap_totals.forEach((total: any) => {
+          text += `  ${total.measurement}: ${total.total}\n`;
+        });
+      }
+      text += '\n';
+    } else {
+      text += 'No value scrap\n\n';
+    }
+
+    text += '─────────────────────────────────────\n';
+    text += 'CHARGE MATERIALS\n';
+    text += '─────────────────────────────────────\n';
+    if (checkIn.charge_materials && Array.isArray(checkIn.charge_materials) && checkIn.charge_materials.length > 0) {
+      checkIn.charge_materials.forEach((item: any) => {
+        text += `${item.materialName}: ${item.quantity} ${item.measurement}\n`;
+      });
+      if (checkIn.charge_materials_totals && Array.isArray(checkIn.charge_materials_totals) && checkIn.charge_materials_totals.length > 0) {
+        text += '\nTotals by Unit:\n';
+        checkIn.charge_materials_totals.forEach((total: any) => {
+          text += `  ${total.measurement}: ${total.total}\n`;
+        });
+      }
+      text += '\n';
+    } else {
+      text += 'No charge materials\n\n';
+    }
+
+    text += '─────────────────────────────────────\n';
+    text += 'i-SERIES / RYZEN\n';
+    text += '─────────────────────────────────────\n';
+    text += 'PCs:\n';
+    if (checkIn.i_series_pcs && Array.isArray(checkIn.i_series_pcs) && checkIn.i_series_pcs.length > 0) {
+      checkIn.i_series_pcs.forEach((item: any) => {
+        text += `  ${item.processorSeries} ${item.processorGeneration}: ${item.quantity}\n`;
+      });
+    } else {
+      text += '  None\n';
+    }
+    text += '\nLaptops:\n';
+    if (checkIn.i_series_laptops && Array.isArray(checkIn.i_series_laptops) && checkIn.i_series_laptops.length > 0) {
+      checkIn.i_series_laptops.forEach((item: any) => {
+        text += `  ${item.processorSeries} ${item.processorGeneration}: ${item.quantity}\n`;
+      });
+    } else {
+      text += '  None\n';
+    }
+    text += '\n';
+
+    text += '─────────────────────────────────────\n';
+    text += 'ADDITIONAL NOTES\n';
+    text += '─────────────────────────────────────\n';
+    text += `Suspected Value:\n${checkIn.suspected_value_note || 'None'}\n\n`;
+    text += `Other Notes / Damages / Customer Requests:\n${checkIn.other_notes || 'None'}\n\n`;
+
+    text += '═══════════════════════════════════════\n';
+    text += `Generated: ${new Date().toLocaleString('en-US')}\n`;
+    text += '═══════════════════════════════════════\n';
+
+    return text;
+  };
+
+  const handlePrintCheckIn = async () => {
+    if (!selectedCheckIn) return;
+
+    try {
+      const checkInText = generateCheckInText(selectedCheckIn);
+      const fileName = `check-in-${selectedCheckIn.company_name.replace(/[^a-z0-9]/gi, '_')}-${new Date().getTime()}.txt`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+
+      console.log('Saving check-in to:', fileUri);
+
+      await FileSystem.writeAsStringAsync(fileUri, checkInText, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      console.log('File saved successfully');
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/plain',
+          dialogTitle: 'Share Check-In Report',
+          UTI: 'public.plain-text',
+        });
+        console.log('File shared successfully');
+      } else {
+        Alert.alert(
+          'File Saved',
+          `Check-in report saved to:\n${fileUri}\n\nYou can find it in your device's file manager.`
+        );
+      }
+    } catch (error) {
+      console.error('Error sharing check-in:', error);
+      Alert.alert('Error', 'Failed to share check-in. Please try again.');
+    }
+  };
+
+  const handleShareAllCheckIns = async () => {
+    if (data.length === 0) {
+      Alert.alert('No Data', 'There are no check-ins to share.');
+      return;
+    }
+
+    try {
+      let allCheckInsText = '═══════════════════════════════════════\n';
+      allCheckInsText += '   ALL WAREHOUSE CHECK-IN REPORTS\n';
+      allCheckInsText += '═══════════════════════════════════════\n\n';
+      allCheckInsText += `Total Check-Ins: ${data.length}\n`;
+      allCheckInsText += `Generated: ${new Date().toLocaleString('en-US')}\n\n`;
+
+      data.forEach((checkIn, index) => {
+        allCheckInsText += `\n\n${'═'.repeat(39)}\n`;
+        allCheckInsText += `CHECK-IN #${index + 1}\n`;
+        allCheckInsText += `${'═'.repeat(39)}\n\n`;
+        allCheckInsText += generateCheckInText(checkIn);
+      });
+
+      const fileName = `all-check-ins-${new Date().getTime()}.txt`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+
+      console.log('Saving all check-ins to:', fileUri);
+
+      await FileSystem.writeAsStringAsync(fileUri, allCheckInsText, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      console.log('File saved successfully');
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/plain',
+          dialogTitle: 'Share All Check-In Reports',
+          UTI: 'public.plain-text',
+        });
+        console.log('File shared successfully');
+      } else {
+        Alert.alert(
+          'File Saved',
+          `All check-in reports saved to:\n${fileUri}\n\nYou can find it in your device's file manager.`
+        );
+      }
+    } catch (error) {
+      console.error('Error sharing all check-ins:', error);
+      Alert.alert('Error', 'Failed to share check-ins. Please try again.');
+    }
+  };
+
+  const resetForm = () => {
+    setEmployeeName('');
+    setCompanyName('');
+    setCompanyAddress('');
+    setCompanyContact('');
+    setCompanyEmail('');
+    setCompanyPhone('');
+    setCategoryName('');
+    setMaterialName('');
+    setMaterialMeasurement('');
+    setProcessorSeries('');
+    setProcessorGeneration('');
+  };
+
+  const renderAddForm = () => {
+    switch (activeSection) {
+      case 'employees':
+        return (
+          <TextInput
+            style={styles.input}
+            value={employeeName}
+            onChangeText={setEmployeeName}
+            placeholder="Employee Name"
+            placeholderTextColor={colors.textSecondary}
+          />
+        );
+      case 'companies':
+        return (
+          <React.Fragment>
+            <TextInput
+              style={styles.input}
+              value={companyName}
+              onChangeText={setCompanyName}
+              placeholder="Company Name"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <TextInput
+              style={styles.input}
+              value={companyAddress}
+              onChangeText={setCompanyAddress}
+              placeholder="Address"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <TextInput
+              style={styles.input}
+              value={companyContact}
+              onChangeText={setCompanyContact}
+              placeholder="Contact Person"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <TextInput
+              style={styles.input}
+              value={companyEmail}
+              onChangeText={setCompanyEmail}
+              placeholder="Email"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="email-address"
+            />
+            <TextInput
+              style={styles.input}
+              value={companyPhone}
+              onChangeText={setCompanyPhone}
+              placeholder="Phone"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="phone-pad"
+            />
+          </React.Fragment>
+        );
+      case 'categories':
+        return (
+          <TextInput
+            style={styles.input}
+            value={categoryName}
+            onChangeText={setCategoryName}
+            placeholder="Category Name"
+            placeholderTextColor={colors.textSecondary}
+          />
+        );
+      case 'value-scrap':
+      case 'charge-materials':
+        return (
+          <React.Fragment>
+            <TextInput
+              style={styles.input}
+              value={materialName}
+              onChangeText={setMaterialName}
+              placeholder="Material Name"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <TextInput
+              style={styles.input}
+              value={materialMeasurement}
+              onChangeText={setMaterialMeasurement}
+              placeholder="Measurement (e.g., Lbs., Pcs.)"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </React.Fragment>
+        );
+      case 'i-series':
+        return (
+          <React.Fragment>
+            <TextInput
+              style={styles.input}
+              value={processorSeries}
+              onChangeText={setProcessorSeries}
+              placeholder="Processor Series (e.g., i3, i5, Ryzen 5)"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <TextInput
+              style={styles.input}
+              value={processorGeneration}
+              onChangeText={setProcessorGeneration}
+              placeholder="Processor Generation (e.g., 10th, 11th, N/A)"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </React.Fragment>
+        );
+    }
+  };
+
+  const renderCheckInDetails = () => {
+    if (!selectedCheckIn) return null;
+
+    const getTotalCategoryQuantity = () => {
+      if (!selectedCheckIn.categories || !Array.isArray(selectedCheckIn.categories)) return 0;
+      return selectedCheckIn.categories.reduce((total: number, item: any) => {
+        const qty = parseFloat(item.quantity) || 0;
+        return total + qty;
+      }, 0);
+    };
+
+    return (
+      <ScrollView style={styles.checkInDetailsContainer}>
+        <View style={styles.timestampSection}>
+          <Text style={styles.timestampTitle}>Form Timestamps</Text>
+          <View style={styles.timestampRow}>
+            <Text style={styles.timestampLabel}>Started:</Text>
+            <Text style={styles.timestampValue}>{formatDateTime(selectedCheckIn.started_at)}</Text>
+          </View>
+          <View style={styles.timestampRow}>
+            <Text style={styles.timestampLabel}>Finished:</Text>
+            <Text style={styles.timestampValue}>{formatDateTime(selectedCheckIn.finished_at)}</Text>
+          </View>
+          <View style={styles.timestampRow}>
+            <Text style={styles.timestampLabel}>Duration:</Text>
+            <Text style={styles.timestampValue}>
+              {calculateDuration(selectedCheckIn.started_at, selectedCheckIn.finished_at)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>Basic Information</Text>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Employee:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.employee_name}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Total Time:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.total_time} hrs</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Company:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.company_name}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Address:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.address}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Contact:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.contact_person}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Email:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.email}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Phone:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.phone}</Text>
+          </View>
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>Certificate of Destruction</Text>
+          {selectedCheckIn.categories && Array.isArray(selectedCheckIn.categories) && selectedCheckIn.categories.length > 0 ? (
+            <React.Fragment>
+              {selectedCheckIn.categories.map((item: any, index: number) => (
+                <View key={index} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.category}:</Text>
+                  <Text style={styles.detailValue}>{item.quantity}</Text>
+                </View>
+              ))}
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total:</Text>
+                <Text style={styles.totalValue}>{getTotalCategoryQuantity()}</Text>
+              </View>
+            </React.Fragment>
+          ) : (
+            <Text style={styles.emptyText}>No categories</Text>
+          )}
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>Value Scrap</Text>
+          {selectedCheckIn.value_scrap && Array.isArray(selectedCheckIn.value_scrap) && selectedCheckIn.value_scrap.length > 0 ? (
+            <React.Fragment>
+              {selectedCheckIn.value_scrap.map((item: any, index: number) => (
+                <View key={index} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.materialName}:</Text>
+                  <Text style={styles.detailValue}>{item.quantity} {item.measurement}</Text>
+                </View>
+              ))}
+              {selectedCheckIn.value_scrap_totals && Array.isArray(selectedCheckIn.value_scrap_totals) && selectedCheckIn.value_scrap_totals.length > 0 && (
+                <View style={styles.totalsSection}>
+                  <Text style={styles.totalsTitle}>Totals by Unit:</Text>
+                  {selectedCheckIn.value_scrap_totals.map((total: any, index: number) => (
+                    <View key={index} style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>{total.measurement}:</Text>
+                      <Text style={styles.totalValue}>{total.total}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </React.Fragment>
+          ) : (
+            <Text style={styles.emptyText}>No value scrap</Text>
+          )}
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>Charge Materials</Text>
+          {selectedCheckIn.charge_materials && Array.isArray(selectedCheckIn.charge_materials) && selectedCheckIn.charge_materials.length > 0 ? (
+            <React.Fragment>
+              {selectedCheckIn.charge_materials.map((item: any, index: number) => (
+                <View key={index} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.materialName}:</Text>
+                  <Text style={styles.detailValue}>{item.quantity} {item.measurement}</Text>
+                </View>
+              ))}
+              {selectedCheckIn.charge_materials_totals && Array.isArray(selectedCheckIn.charge_materials_totals) && selectedCheckIn.charge_materials_totals.length > 0 && (
+                <View style={styles.totalsSection}>
+                  <Text style={styles.totalsTitle}>Totals by Unit:</Text>
+                  {selectedCheckIn.charge_materials_totals.map((total: any, index: number) => (
+                    <View key={index} style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>{total.measurement}:</Text>
+                      <Text style={styles.totalValue}>{total.total}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </React.Fragment>
+          ) : (
+            <Text style={styles.emptyText}>No charge materials</Text>
+          )}
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>i-Series / Ryzen</Text>
+          
+          <View style={styles.subsection}>
+            <Text style={styles.subsectionTitle}>PCs:</Text>
+            {selectedCheckIn.i_series_pcs && Array.isArray(selectedCheckIn.i_series_pcs) && selectedCheckIn.i_series_pcs.length > 0 ? (
+              selectedCheckIn.i_series_pcs.map((item: any, index: number) => (
+                <View key={index} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.processorSeries} {item.processorGeneration}:</Text>
+                  <Text style={styles.detailValue}>{item.quantity}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>None</Text>
+            )}
+          </View>
+
+          <View style={styles.subsection}>
+            <Text style={styles.subsectionTitle}>Laptops:</Text>
+            {selectedCheckIn.i_series_laptops && Array.isArray(selectedCheckIn.i_series_laptops) && selectedCheckIn.i_series_laptops.length > 0 ? (
+              selectedCheckIn.i_series_laptops.map((item: any, index: number) => (
+                <View key={index} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.processorSeries} {item.processorGeneration}:</Text>
+                  <Text style={styles.detailValue}>{item.quantity}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>None</Text>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>Additional Notes</Text>
+          <View style={styles.noteSection}>
+            <Text style={styles.noteLabel}>Suspected Value:</Text>
+            <Text style={styles.noteValue}>{selectedCheckIn.suspected_value_note || 'None'}</Text>
+          </View>
+          <View style={styles.noteSection}>
+            <Text style={styles.noteLabel}>Other Notes / Damages / Customer Requests:</Text>
+            <Text style={styles.noteValue}>{selectedCheckIn.other_notes || 'None'}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.shareButton} onPress={handlePrintCheckIn}>
+          <IconSymbol
+            ios_icon_name="square.and.arrow.up.fill"
+            android_material_icon_name="share"
+            size={20}
+            color="#FFFFFF"
+          />
+          <Text style={styles.shareButtonText}>Share / Print This Check-In</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  };
+
+  const renderDataItem = (item: any) => {
+    switch (activeSection) {
+      case 'employees':
+        return (
+          <View key={item.id} style={styles.dataItem}>
+            <Text style={styles.dataItemText}>{item.name}</Text>
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
+              <IconSymbol
+                ios_icon_name="trash.fill"
+                android_material_icon_name="delete"
+                size={20}
+                color={colors.secondary}
+              />
+            </TouchableOpacity>
+          </View>
+        );
+      case 'companies':
+        return (
+          <View key={item.id} style={styles.dataItem}>
+            <View style={styles.dataItemContent}>
+              <Text style={styles.dataItemTitle}>{item.name}</Text>
+              <Text style={styles.dataItemSubtext}>{item.address}</Text>
+              <Text style={styles.dataItemSubtext}>{item.contact_person}</Text>
+            </View>
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
+              <IconSymbol
+                ios_icon_name="trash.fill"
+                android_material_icon_name="delete"
+                size={20}
+                color={colors.secondary}
+              />
+            </TouchableOpacity>
+          </View>
+        );
+      case 'categories':
+        return (
+          <View key={item.id} style={styles.dataItem}>
+            <Text style={styles.dataItemText}>{item.name}</Text>
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
+              <IconSymbol
+                ios_icon_name="trash.fill"
+                android_material_icon_name="delete"
+                size={20}
+                color={colors.secondary}
+              />
+            </TouchableOpacity>
+          </View>
+        );
+      case 'value-scrap':
+      case 'charge-materials':
+        return (
+          <View key={item.id} style={styles.dataItem}>
+            <View style={styles.dataItemContent}>
+              <Text style={styles.dataItemTitle}>{item.name}</Text>
+              <Text style={styles.dataItemSubtext}>Measurement: {item.measurement}</Text>
+            </View>
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
+              <IconSymbol
+                ios_icon_name="trash.fill"
+                android_material_icon_name="delete"
+                size={20}
+                color={colors.secondary}
+              />
+            </TouchableOpacity>
+          </View>
+        );
+      case 'i-series':
+        return (
+          <View key={item.id} style={styles.dataItem}>
+            <View style={styles.dataItemContent}>
+              <Text style={styles.dataItemTitle}>{item.processor_series}</Text>
+              <Text style={styles.dataItemSubtext}>Generation: {item.processor_generation}</Text>
+            </View>
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
+              <IconSymbol
+                ios_icon_name="trash.fill"
+                android_material_icon_name="delete"
+                size={20}
+                color={colors.secondary}
+              />
+            </TouchableOpacity>
+          </View>
+        );
+      case 'check-ins':
+        return (
+          <TouchableOpacity
+            key={item.id}
+            style={styles.dataItem}
+            onPress={() => handleViewCheckIn(item)}
+          >
+            <View style={styles.dataItemContent}>
+              <Text style={styles.dataItemTitle}>{item.company_name}</Text>
+              <Text style={styles.dataItemSubtext}>
+                Employee: {item.employee_name}
+              </Text>
+              <Text style={styles.dataItemSubtext}>
+                Created: {formatDateTime(item.created_at)}
+              </Text>
+            </View>
+            <IconSymbol
+              ios_icon_name="chevron.right"
+              android_material_icon_name="chevron_right"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        );
+    }
+  };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-      >
-        <GlassView style={styles.profileHeader} glassEffectStyle="regular">
-          <IconSymbol ios_icon_name="person.circle.fill" android_material_icon_name="person" size={24} color={theme.colors.primary} />
-          <Text style={[styles.name, { color: theme.colors.text }]}>John Doe</Text>
-          <Text style={[styles.email, { color: theme.dark ? '#98989D' : '#666' }]}>john.doe@example.com</Text>
-        </GlassView>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Admin Panel</Text>
+        <Text style={styles.headerSubtitle}>Manage warehouse data and view check-ins</Text>
+      </View>
 
-        <GlassView style={styles.section} glassEffectStyle="regular">
-          <View style={styles.infoRow}>
-            <IconSymbol ios_icon_name="phone.fill" android_material_icon_name="phone" size={24} color={theme.dark ? '#98989D' : '#666'} />
-            <Text style={[styles.infoText, { color: theme.colors.text }]}>+1 (555) 123-4567</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <IconSymbol ios_icon_name="location.fill" android_material_icon_name="location-on" size={24} color={theme.dark ? '#98989D' : '#666'} />
-            <Text style={[styles.infoText, { color: theme.colors.text }]}>San Francisco, CA</Text>
-          </View>
-        </GlassView>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsContainer}
+        contentContainerStyle={styles.tabsContent}
+      >
+        <TouchableOpacity
+          style={[styles.tab, activeSection === 'check-ins' && styles.tabActive]}
+          onPress={() => setActiveSection('check-ins')}
+        >
+          <Text style={[styles.tabText, activeSection === 'check-ins' && styles.tabTextActive]}>
+            Check-Ins ({data.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeSection === 'employees' && styles.tabActive]}
+          onPress={() => setActiveSection('employees')}
+        >
+          <Text style={[styles.tabText, activeSection === 'employees' && styles.tabTextActive]}>
+            Employees
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeSection === 'companies' && styles.tabActive]}
+          onPress={() => setActiveSection('companies')}
+        >
+          <Text style={[styles.tabText, activeSection === 'companies' && styles.tabTextActive]}>
+            Companies
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeSection === 'categories' && styles.tabActive]}
+          onPress={() => setActiveSection('categories')}
+        >
+          <Text style={[styles.tabText, activeSection === 'categories' && styles.tabTextActive]}>
+            Categories
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeSection === 'value-scrap' && styles.tabActive]}
+          onPress={() => setActiveSection('value-scrap')}
+        >
+          <Text style={[styles.tabText, activeSection === 'value-scrap' && styles.tabTextActive]}>
+            Value Scrap
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeSection === 'charge-materials' && styles.tabActive]}
+          onPress={() => setActiveSection('charge-materials')}
+        >
+          <Text style={[styles.tabText, activeSection === 'charge-materials' && styles.tabTextActive]}>
+            Charge Materials
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeSection === 'i-series' && styles.tabActive]}
+          onPress={() => setActiveSection('i-series')}
+        >
+          <Text style={[styles.tabText, activeSection === 'i-series' && styles.tabTextActive]}>
+            i-Series
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        {activeSection === 'check-ins' && data.length > 0 && (
+          <TouchableOpacity
+            style={styles.shareAllButton}
+            onPress={handleShareAllCheckIns}
+          >
+            <IconSymbol
+              ios_icon_name="square.and.arrow.up.fill"
+              android_material_icon_name="share"
+              size={24}
+              color="#FFFFFF"
+            />
+            <Text style={styles.shareAllButtonText}>Share / Print All Check-Ins</Text>
+          </TouchableOpacity>
+        )}
+
+        {activeSection !== 'check-ins' && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setShowAddModal(true)}
+          >
+            <IconSymbol
+              ios_icon_name="plus.circle.fill"
+              android_material_icon_name="add_circle"
+              size={24}
+              color="#FFFFFF"
+            />
+            <Text style={styles.addButtonText}>Add New</Text>
+          </TouchableOpacity>
+        )}
+
+        {loading ? (
+          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+        ) : data.length === 0 ? (
+          <Text style={styles.emptyText}>
+            {activeSection === 'check-ins' 
+              ? 'No check-ins found. Complete a check-in to see it here.'
+              : 'No data available'}
+          </Text>
+        ) : (
+          data.map(renderDataItem)
+        )}
+      </ScrollView>
+
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              Add {activeSection.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </Text>
+            {renderAddForm()}
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={handleAdd}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.saveButtonText}>Add</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => {
+                setShowAddModal(false);
+                resetForm();
+              }}
+            >
+              <Text style={styles.modalCloseButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showViewModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowViewModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Check-In Details</Text>
+              <TouchableOpacity onPress={() => setShowViewModal(false)}>
+                <IconSymbol
+                  ios_icon_name="xmark.circle.fill"
+                  android_material_icon_name="cancel"
+                  size={28}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+            {renderCheckInDetails()}
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
   container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    backgroundColor: colors.card,
+    paddingTop: 60,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  tabsContainer: {
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tabsContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 20,
+    backgroundColor: colors.background,
+  },
+  tabActive: {
+    backgroundColor: colors.primary,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  tabTextActive: {
+    color: '#FFFFFF',
+  },
+  content: {
     flex: 1,
   },
   contentContainer: {
     padding: 20,
+    paddingBottom: 120,
   },
-  profileHeader: {
-    alignItems: 'center',
-    borderRadius: 12,
-    padding: 32,
-    marginBottom: 16,
-    gap: 12,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  email: {
-    fontSize: 16,
-  },
-  section: {
-    borderRadius: 12,
-    padding: 20,
-    gap: 12,
-  },
-  infoRow: {
+  addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
   },
-  infoText: {
+  addButtonText: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  shareAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.secondary,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
+  },
+  shareAllButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.secondary,
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  shareButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  loader: {
+    marginTop: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 40,
+  },
+  dataItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dataItemContent: {
+    flex: 1,
+  },
+  dataItemText: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  dataItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  dataItemSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  input: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 16,
+    color: colors.text,
+    marginBottom: 12,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  modalCloseButton: {
+    backgroundColor: colors.border,
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  checkInDetailsContainer: {
+    flex: 1,
+  },
+  timestampSection: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  timestampTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  timestampRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  timestampLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  timestampValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  detailSection: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  detailSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  subsection: {
+    marginBottom: 12,
+  },
+  subsectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+    flex: 1,
+    textAlign: 'right',
+  },
+  totalsSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 2,
+    borderTopColor: colors.primary,
+    backgroundColor: colors.highlight,
+    padding: 12,
+    borderRadius: 8,
+  },
+  totalsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  totalValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  noteSection: {
+    marginBottom: 12,
+  },
+  noteLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  noteValue: {
+    fontSize: 14,
+    color: colors.text,
   },
 });
