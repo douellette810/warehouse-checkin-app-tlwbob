@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles/commonStyles';
 import { supabase } from '@/utils/supabase';
 import { Employee, Company, Category, Material, CheckInFormData, FormStep } from '@/types/checkIn';
@@ -160,6 +161,36 @@ export default function HomeScreen() {
     setCurrentStep(step);
   };
 
+  const resetFormToBeginning = () => {
+    console.log('Resetting form to beginning...');
+    
+    // Reset form data with a new start time
+    setFormData({
+      employeeName: '',
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+      totalTime: '',
+      companyId: '',
+      companyName: '',
+      address: '',
+      contactPerson: '',
+      email: '',
+      phone: '',
+      categories: [],
+      valueMaterials: [],
+      chargeMaterials: [],
+      valueMaterialsTotals: [],
+      chargeMaterialsTotals: [],
+      suspectedValueNote: null,
+      otherNotes: null,
+    });
+    
+    // Reset to the first step
+    setCurrentStep('basic-info');
+    
+    console.log('Form reset complete. Ready for new check-in.');
+  };
+
   const confirmCheckInSaved = async (checkInId: string): Promise<boolean> => {
     try {
       console.log('Confirming check-in saved with ID:', checkInId);
@@ -234,6 +265,9 @@ export default function HomeScreen() {
         console.error('Error message:', error.message);
         console.error('Error details:', JSON.stringify(error, null, 2));
         
+        // Trigger error haptic feedback
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        
         Alert.alert(
           'Save Failed',
           `Failed to save check-in. Error: ${error.message}. Please try again or contact support.`
@@ -243,6 +277,10 @@ export default function HomeScreen() {
 
       if (!data || !data.id) {
         console.error('No data returned from insert operation');
+        
+        // Trigger error haptic feedback
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        
         Alert.alert(
           'Save Failed',
           'Failed to save check-in. No ID returned from database. Please try again.'
@@ -259,6 +297,10 @@ export default function HomeScreen() {
 
       if (!confirmed) {
         console.error('Check-in confirmation failed for ID:', checkInId);
+        
+        // Trigger warning haptic feedback
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        
         Alert.alert(
           'Save Verification Failed',
           'The check-in was submitted but could not be verified in the database. Please check the admin panel to confirm it was saved, or try submitting again.'
@@ -268,43 +310,29 @@ export default function HomeScreen() {
 
       console.log('Check-in successfully saved and confirmed!');
       
-      // Show success message and navigate back to the main page
+      // Trigger success haptic feedback
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // Show success message and reset the form
       Alert.alert(
-        'Success',
-        'Check-in submitted and verified successfully!',
+        '✓ Success!',
+        `Check-in saved successfully!\n\nEmployee: ${formData.employeeName}\nCompany: ${formData.companyName}\n\nThe form will now reset for the next check-in.`,
         [
           {
             text: 'OK',
             onPress: () => {
-              console.log('Resetting form and returning to main page...');
-              // Reset form and record new start time
-              setFormData({
-                employeeName: '',
-                startedAt: new Date().toISOString(),
-                finishedAt: null,
-                totalTime: '',
-                companyId: '',
-                companyName: '',
-                address: '',
-                contactPerson: '',
-                email: '',
-                phone: '',
-                categories: [],
-                valueMaterials: [],
-                chargeMaterials: [],
-                valueMaterialsTotals: [],
-                chargeMaterialsTotals: [],
-                suspectedValueNote: null,
-                otherNotes: null,
-              });
-              setCurrentStep('basic-info');
+              resetFormToBeginning();
             },
           },
-        ]
+        ],
+        { cancelable: false }
       );
     } catch (error) {
       console.error('Exception during form submission:', error);
       console.error('Exception details:', JSON.stringify(error, null, 2));
+      
+      // Trigger error haptic feedback
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       
       Alert.alert(
         'Error',
