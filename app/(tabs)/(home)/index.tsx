@@ -22,6 +22,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 export default function HomeScreen() {
   const [currentStep, setCurrentStep] = useState<FormStep>('basic-info');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -159,14 +160,46 @@ export default function HomeScreen() {
     setCurrentStep(step);
   };
 
+  const confirmCheckInSaved = async (checkInId: string): Promise<boolean> => {
+    try {
+      console.log('Confirming check-in saved with ID:', checkInId);
+      
+      // Query the database to confirm the check-in exists
+      const { data, error } = await supabase
+        .from('check_ins')
+        .select('id, employee_name, company_name, created_at')
+        .eq('id', checkInId)
+        .single();
+
+      if (error) {
+        console.error('Error confirming check-in:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        return false;
+      }
+
+      if (!data) {
+        console.error('Check-in not found in database after save. ID:', checkInId);
+        return false;
+      }
+
+      console.log('Check-in confirmed in database:', data);
+      return true;
+    } catch (error) {
+      console.error('Exception during check-in confirmation:', error);
+      return false;
+    }
+  };
+
   const submitForm = async () => {
     try {
-      setLoading(true);
+      setSubmitting(true);
+      console.log('Starting check-in submission...');
       
       // Ensure finishedAt is set
       const finishedAt = formData.finishedAt || new Date().toISOString();
       
-      const { error } = await supabase.from('check_ins').insert({
+      // Prepare the data to insert
+      const checkInData = {
         employee_name: formData.employeeName,
         started_at: formData.startedAt,
         finished_at: finishedAt,
@@ -184,16 +217,66 @@ export default function HomeScreen() {
         charge_materials_totals: formData.chargeMaterialsTotals,
         suspected_value_note: formData.suspectedValueNote,
         other_notes: formData.otherNotes,
-      });
+      };
+
+      console.log('Inserting check-in data:', JSON.stringify(checkInData, null, 2));
+
+      // Insert the check-in
+      const { data, error } = await supabase
+        .from('check_ins')
+        .insert(checkInData)
+        .select('id')
+        .single();
 
       if (error) {
-        console.log('Error submitting form:', error);
-        Alert.alert('Error', 'Failed to submit form. Please try again.');
-      } else {
-        Alert.alert('Success', 'Check-in submitted successfully!', [
+        console.error('Error submitting check-in:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        
+        Alert.alert(
+          'Save Failed',
+          `Failed to save check-in. Error: ${error.message}. Please try again or contact support.`
+        );
+        return;
+      }
+
+      if (!data || !data.id) {
+        console.error('No data returned from insert operation');
+        Alert.alert(
+          'Save Failed',
+          'Failed to save check-in. No ID returned from database. Please try again.'
+        );
+        return;
+      }
+
+      const checkInId = data.id;
+      console.log('Check-in inserted with ID:', checkInId);
+
+      // Confirm the check-in was saved
+      console.log('Confirming check-in was saved...');
+      const confirmed = await confirmCheckInSaved(checkInId);
+
+      if (!confirmed) {
+        console.error('Check-in confirmation failed for ID:', checkInId);
+        Alert.alert(
+          'Save Verification Failed',
+          'The check-in was submitted but could not be verified in the database. Please check the admin panel to confirm it was saved, or try submitting again.'
+        );
+        return;
+      }
+
+      console.log('Check-in successfully saved and confirmed!');
+      
+      // Show success message and navigate back to the main page
+      Alert.alert(
+        'Success',
+        'Check-in submitted and verified successfully!',
+        [
           {
             text: 'OK',
             onPress: () => {
+              console.log('Resetting form and returning to main page...');
               // Reset form and record new start time
               setFormData({
                 employeeName: '',
@@ -217,13 +300,18 @@ export default function HomeScreen() {
               setCurrentStep('basic-info');
             },
           },
-        ]);
-      }
+        ]
+      );
     } catch (error) {
-      console.log('Error submitting form:', error);
-      Alert.alert('Error', 'Failed to submit form. Please try again.');
+      console.error('Exception during form submission:', error);
+      console.error('Exception details:', JSON.stringify(error, null, 2));
+      
+      Alert.alert(
+        'Error',
+        `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`
+      );
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -341,7 +429,7 @@ export default function HomeScreen() {
             onEdit={goToStep}
             onSubmit={submitForm}
             onBack={goToPreviousStep}
-            loading={loading}
+            loading={submitting}
           />
         )}
       </ScrollView>

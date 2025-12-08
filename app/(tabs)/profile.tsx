@@ -21,6 +21,8 @@ export default function ProfileScreen() {
   const [activeSection, setActiveSection] = useState<AdminSection>('employees');
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
   const [data, setData] = useState<any[]>([]);
 
   const [employeeName, setEmployeeName] = useState('');
@@ -70,6 +72,7 @@ export default function ProfileScreen() {
       if (error) {
         console.log('Error loading data:', error);
       } else {
+        console.log(`Loaded ${result?.length || 0} items from ${tableName}`);
         setData(result || []);
       }
     } catch (error) {
@@ -134,6 +137,15 @@ export default function ProfileScreen() {
   };
 
   const handleDelete = async (id: string) => {
+    // Don't allow deletion of check-ins
+    if (activeSection === 'check-ins') {
+      Alert.alert(
+        'Cannot Delete',
+        'Check-ins cannot be deleted for record-keeping purposes. They are permanent records.'
+      );
+      return;
+    }
+
     Alert.alert(
       'Confirm Delete',
       'Are you sure you want to delete this item?',
@@ -162,9 +174,6 @@ export default function ProfileScreen() {
                 case 'charge-materials':
                   tableName = 'charge_materials';
                   break;
-                case 'check-ins':
-                  tableName = 'check_ins';
-                  break;
               }
 
               const { error } = await supabase.from(tableName).delete().eq('id', id);
@@ -185,6 +194,36 @@ export default function ProfileScreen() {
         },
       ]
     );
+  };
+
+  const handleViewCheckIn = (checkIn: any) => {
+    setSelectedCheckIn(checkIn);
+    setShowViewModal(true);
+  };
+
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return 'Not recorded';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const calculateDuration = (startedAt: string | null, finishedAt: string | null) => {
+    if (!startedAt || !finishedAt) return 'N/A';
+    const start = new Date(startedAt);
+    const finish = new Date(finishedAt);
+    const durationMs = finish.getTime() - start.getTime();
+    const minutes = Math.floor(durationMs / 60000);
+    const seconds = Math.floor((durationMs % 60000) / 1000);
+    return `${minutes} min ${seconds} sec`;
   };
 
   const resetForm = () => {
@@ -286,6 +325,158 @@ export default function ProfileScreen() {
     }
   };
 
+  const renderCheckInDetails = () => {
+    if (!selectedCheckIn) return null;
+
+    const getTotalCategoryQuantity = () => {
+      if (!selectedCheckIn.categories || !Array.isArray(selectedCheckIn.categories)) return 0;
+      return selectedCheckIn.categories.reduce((total: number, item: any) => {
+        const qty = parseFloat(item.quantity) || 0;
+        return total + qty;
+      }, 0);
+    };
+
+    return (
+      <ScrollView style={styles.checkInDetailsContainer}>
+        <View style={styles.timestampSection}>
+          <Text style={styles.timestampTitle}>Form Timestamps</Text>
+          <View style={styles.timestampRow}>
+            <Text style={styles.timestampLabel}>Started:</Text>
+            <Text style={styles.timestampValue}>{formatDateTime(selectedCheckIn.started_at)}</Text>
+          </View>
+          <View style={styles.timestampRow}>
+            <Text style={styles.timestampLabel}>Finished:</Text>
+            <Text style={styles.timestampValue}>{formatDateTime(selectedCheckIn.finished_at)}</Text>
+          </View>
+          <View style={styles.timestampRow}>
+            <Text style={styles.timestampLabel}>Duration:</Text>
+            <Text style={styles.timestampValue}>
+              {calculateDuration(selectedCheckIn.started_at, selectedCheckIn.finished_at)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>Basic Information</Text>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Employee:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.employee_name}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Total Time:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.total_time} hrs</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Company:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.company_name}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Address:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.address}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Contact:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.contact_person}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Email:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.email}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Phone:</Text>
+            <Text style={styles.detailValue}>{selectedCheckIn.phone}</Text>
+          </View>
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>Certificate of Destruction</Text>
+          {selectedCheckIn.categories && Array.isArray(selectedCheckIn.categories) ? (
+            <React.Fragment>
+              {selectedCheckIn.categories.map((item: any, index: number) => (
+                <View key={index} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.category}:</Text>
+                  <Text style={styles.detailValue}>{item.quantity}</Text>
+                </View>
+              ))}
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total:</Text>
+                <Text style={styles.totalValue}>{getTotalCategoryQuantity()}</Text>
+              </View>
+            </React.Fragment>
+          ) : (
+            <Text style={styles.emptyText}>No categories</Text>
+          )}
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>Value Materials</Text>
+          {selectedCheckIn.value_materials && Array.isArray(selectedCheckIn.value_materials) && selectedCheckIn.value_materials.length > 0 ? (
+            <React.Fragment>
+              {selectedCheckIn.value_materials.map((item: any, index: number) => (
+                <View key={index} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.materialName}:</Text>
+                  <Text style={styles.detailValue}>{item.quantity} {item.measurement}</Text>
+                </View>
+              ))}
+              {selectedCheckIn.value_materials_totals && Array.isArray(selectedCheckIn.value_materials_totals) && selectedCheckIn.value_materials_totals.length > 0 && (
+                <View style={styles.totalsSection}>
+                  <Text style={styles.totalsTitle}>Totals by Unit:</Text>
+                  {selectedCheckIn.value_materials_totals.map((total: any, index: number) => (
+                    <View key={index} style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>{total.measurement}:</Text>
+                      <Text style={styles.totalValue}>{total.total}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </React.Fragment>
+          ) : (
+            <Text style={styles.emptyText}>No value materials</Text>
+          )}
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>Charge Materials</Text>
+          {selectedCheckIn.charge_materials && Array.isArray(selectedCheckIn.charge_materials) && selectedCheckIn.charge_materials.length > 0 ? (
+            <React.Fragment>
+              {selectedCheckIn.charge_materials.map((item: any, index: number) => (
+                <View key={index} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.materialName}:</Text>
+                  <Text style={styles.detailValue}>{item.quantity} {item.measurement}</Text>
+                </View>
+              ))}
+              {selectedCheckIn.charge_materials_totals && Array.isArray(selectedCheckIn.charge_materials_totals) && selectedCheckIn.charge_materials_totals.length > 0 && (
+                <View style={styles.totalsSection}>
+                  <Text style={styles.totalsTitle}>Totals by Unit:</Text>
+                  {selectedCheckIn.charge_materials_totals.map((total: any, index: number) => (
+                    <View key={index} style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>{total.measurement}:</Text>
+                      <Text style={styles.totalValue}>{total.total}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </React.Fragment>
+          ) : (
+            <Text style={styles.emptyText}>No charge materials</Text>
+          )}
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailSectionTitle}>Additional Notes</Text>
+          <View style={styles.noteSection}>
+            <Text style={styles.noteLabel}>Suspected Value:</Text>
+            <Text style={styles.noteValue}>{selectedCheckIn.suspected_value_note || 'None'}</Text>
+          </View>
+          <View style={styles.noteSection}>
+            <Text style={styles.noteLabel}>Other Notes / Damages:</Text>
+            <Text style={styles.noteValue}>{selectedCheckIn.other_notes || 'None'}</Text>
+          </View>
+        </View>
+      </ScrollView>
+    );
+  };
+
   const renderDataItem = (item: any) => {
     switch (activeSection) {
       case 'employees':
@@ -354,25 +545,27 @@ export default function ProfileScreen() {
         );
       case 'check-ins':
         return (
-          <View key={item.id} style={styles.dataItem}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.dataItem}
+            onPress={() => handleViewCheckIn(item)}
+          >
             <View style={styles.dataItemContent}>
               <Text style={styles.dataItemTitle}>{item.company_name}</Text>
               <Text style={styles.dataItemSubtext}>
                 Employee: {item.employee_name}
               </Text>
               <Text style={styles.dataItemSubtext}>
-                Date: {item.date} at {item.time}
+                Created: {formatDateTime(item.created_at)}
               </Text>
             </View>
-            <TouchableOpacity onPress={() => handleDelete(item.id)}>
-              <IconSymbol
-                ios_icon_name="trash.fill"
-                android_material_icon_name="delete"
-                size={20}
-                color={colors.secondary}
-              />
-            </TouchableOpacity>
-          </View>
+            <IconSymbol
+              ios_icon_name="chevron.right"
+              android_material_icon_name="chevron_right"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
         );
     }
   };
@@ -435,7 +628,7 @@ export default function ProfileScreen() {
           onPress={() => setActiveSection('check-ins')}
         >
           <Text style={[styles.tabText, activeSection === 'check-ins' && styles.tabTextActive]}>
-            Check-Ins
+            Check-Ins ({data.length})
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -459,7 +652,11 @@ export default function ProfileScreen() {
         {loading ? (
           <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
         ) : data.length === 0 ? (
-          <Text style={styles.emptyText}>No data available</Text>
+          <Text style={styles.emptyText}>
+            {activeSection === 'check-ins' 
+              ? 'No check-ins found. Complete a check-in to see it here.'
+              : 'No data available'}
+          </Text>
         ) : (
           data.map(renderDataItem)
         )}
@@ -497,6 +694,30 @@ export default function ProfileScreen() {
             >
               <Text style={styles.modalCloseButtonText}>Cancel</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showViewModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowViewModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Check-In Details</Text>
+              <TouchableOpacity onPress={() => setShowViewModal(false)}>
+                <IconSymbol
+                  ios_icon_name="xmark.circle.fill"
+                  android_material_icon_name="cancel"
+                  size={28}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+            {renderCheckInDetails()}
           </View>
         </View>
       </Modal>
@@ -624,13 +845,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 16,
   },
   input: {
     backgroundColor: colors.background,
@@ -664,6 +890,113 @@ const styles = StyleSheet.create({
   modalCloseButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.text,
+  },
+  checkInDetailsContainer: {
+    flex: 1,
+  },
+  timestampSection: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  timestampTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  timestampRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  timestampLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  timestampValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  detailSection: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  detailSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+    flex: 1,
+    textAlign: 'right',
+  },
+  totalsSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 2,
+    borderTopColor: colors.primary,
+    backgroundColor: colors.highlight,
+    padding: 12,
+    borderRadius: 8,
+  },
+  totalsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  totalValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  noteSection: {
+    marginBottom: 12,
+  },
+  noteLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  noteValue: {
+    fontSize: 14,
     color: colors.text,
   },
 });
