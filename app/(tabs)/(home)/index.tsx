@@ -42,6 +42,8 @@ export default function HomeScreen() {
     categories: [],
     valueMaterials: [],
     chargeMaterials: [],
+    valueMaterialsTotals: [],
+    chargeMaterialsTotals: [],
     suspectedValueNote: null,
     otherNotes: null,
   });
@@ -178,6 +180,8 @@ export default function HomeScreen() {
         categories: formData.categories,
         value_materials: formData.valueMaterials,
         charge_materials: formData.chargeMaterials,
+        value_materials_totals: formData.valueMaterialsTotals,
+        charge_materials_totals: formData.chargeMaterialsTotals,
         suspected_value_note: formData.suspectedValueNote,
         other_notes: formData.otherNotes,
       });
@@ -205,6 +209,8 @@ export default function HomeScreen() {
                 categories: [],
                 valueMaterials: [],
                 chargeMaterials: [],
+                valueMaterialsTotals: [],
+                chargeMaterialsTotals: [],
                 suspectedValueNote: null,
                 otherNotes: null,
               });

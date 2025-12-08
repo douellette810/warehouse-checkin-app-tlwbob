@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   TextInput,
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
-import { Material, CheckInFormData, MaterialQuantity } from '@/types/checkIn';
+import { Material, CheckInFormData, MaterialQuantity, MaterialTotal } from '@/types/checkIn';
 
 interface MaterialsStepProps {
   formData: CheckInFormData;
@@ -48,6 +48,30 @@ export default function MaterialsStep({
     }
   };
 
+  const calculateTotals = (materialsList: MaterialQuantity[]): MaterialTotal[] => {
+    const totalsMap = new Map<string, number>();
+    
+    materialsList.forEach(item => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const currentTotal = totalsMap.get(item.measurement) || 0;
+      totalsMap.set(item.measurement, currentTotal + quantity);
+    });
+
+    return Array.from(totalsMap.entries()).map(([measurement, total]) => ({
+      measurement,
+      total,
+    }));
+  };
+
+  const updateTotals = (materialsList: MaterialQuantity[]) => {
+    const totals = calculateTotals(materialsList);
+    if (materialType === 'value') {
+      updateFormData({ valueMaterialsTotals: totals });
+    } else {
+      updateFormData({ chargeMaterialsTotals: totals });
+    }
+  };
+
   const handleYes = () => {
     setHasReceived(true);
     setShowQuantityInput(true);
@@ -67,7 +91,9 @@ export default function MaterialsStep({
         quantity: quantityValue,
         measurement: currentMaterial.measurement,
       };
-      updateMaterialsList([...materialsList, newMaterial]);
+      const updatedList = [...materialsList, newMaterial];
+      updateMaterialsList(updatedList);
+      updateTotals(updatedList);
     }
     setShowQuantityInput(false);
     setQuantityValue('');
@@ -90,6 +116,12 @@ export default function MaterialsStep({
     } else {
       onBack();
     }
+  };
+
+  const getTotals = (): MaterialTotal[] => {
+    return materialType === 'value' 
+      ? formData.valueMaterialsTotals 
+      : formData.chargeMaterialsTotals;
   };
 
   if (materials.length === 0) {
@@ -169,13 +201,28 @@ export default function MaterialsStep({
         {getMaterialsList().length === 0 ? (
           <Text style={styles.summaryEmpty}>None yet</Text>
         ) : (
-          getMaterialsList().map((item, index) => (
-            <View key={index} style={styles.summaryItem}>
-              <Text style={styles.summaryItemText}>
-                {item.materialName}: {item.quantity} {item.measurement}
-              </Text>
-            </View>
-          ))
+          <React.Fragment>
+            {getMaterialsList().map((item, index) => (
+              <View key={index} style={styles.summaryItem}>
+                <Text style={styles.summaryItemText}>
+                  {item.materialName}: {item.quantity} {item.measurement}
+                </Text>
+              </View>
+            ))}
+            
+            {getTotals().length > 0 && (
+              <View style={styles.totalsSection}>
+                <Text style={styles.totalsTitle}>Totals by Unit:</Text>
+                {getTotals().map((total, index) => (
+                  <View key={index} style={styles.totalItem}>
+                    <Text style={styles.totalItemText}>
+                      {total.total} {total.measurement}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </React.Fragment>
         )}
       </View>
 
@@ -318,6 +365,26 @@ const styles = StyleSheet.create({
   summaryItemText: {
     fontSize: 14,
     color: colors.text,
+  },
+  totalsSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  totalsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  totalItem: {
+    paddingVertical: 4,
+  },
+  totalItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
   },
   buttonContainer: {
     flexDirection: 'row',

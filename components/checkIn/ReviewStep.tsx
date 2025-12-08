@@ -174,14 +174,27 @@ export default function ReviewStep({
         {formData.valueMaterials.length === 0 ? (
           <Text style={styles.emptyText}>No value materials received</Text>
         ) : (
-          formData.valueMaterials.map((item, index) => (
-            <View key={index} style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{item.materialName}:</Text>
-              <Text style={styles.infoValue}>
-                {item.quantity} {item.measurement}
-              </Text>
-            </View>
-          ))
+          <React.Fragment>
+            {formData.valueMaterials.map((item, index) => (
+              <View key={index} style={styles.infoRow}>
+                <Text style={styles.infoLabel}>{item.materialName}:</Text>
+                <Text style={styles.infoValue}>
+                  {item.quantity} {item.measurement}
+                </Text>
+              </View>
+            ))}
+            {formData.valueMaterialsTotals.length > 0 && (
+              <View style={styles.totalsSection}>
+                <Text style={styles.totalsTitle}>Totals by Unit:</Text>
+                {formData.valueMaterialsTotals.map((total, index) => (
+                  <View key={index} style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>{total.measurement}:</Text>
+                    <Text style={styles.totalValue}>{total.total}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </React.Fragment>
         )}
       </View>
 
@@ -204,14 +217,27 @@ export default function ReviewStep({
         {formData.chargeMaterials.length === 0 ? (
           <Text style={styles.emptyText}>No charge materials received</Text>
         ) : (
-          formData.chargeMaterials.map((item, index) => (
-            <View key={index} style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{item.materialName}:</Text>
-              <Text style={styles.infoValue}>
-                {item.quantity} {item.measurement}
-              </Text>
-            </View>
-          ))
+          <React.Fragment>
+            {formData.chargeMaterials.map((item, index) => (
+              <View key={index} style={styles.infoRow}>
+                <Text style={styles.infoLabel}>{item.materialName}:</Text>
+                <Text style={styles.infoValue}>
+                  {item.quantity} {item.measurement}
+                </Text>
+              </View>
+            ))}
+            {formData.chargeMaterialsTotals.length > 0 && (
+              <View style={styles.totalsSection}>
+                <Text style={styles.totalsTitle}>Totals by Unit:</Text>
+                {formData.chargeMaterialsTotals.map((total, index) => (
+                  <View key={index} style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>{total.measurement}:</Text>
+                    <Text style={styles.totalValue}>{total.total}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </React.Fragment>
         )}
       </View>
 
@@ -361,24 +387,35 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
+  totalsSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 2,
+    borderTopColor: colors.primary,
+    backgroundColor: colors.highlight,
+    padding: 12,
+    borderRadius: 8,
+  },
+  totalsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    paddingVertical: 6,
   },
   totalLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.text,
   },
   totalValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: colors.text,
+    color: colors.primary,
   },
   emptyText: {
     fontSize: 14,

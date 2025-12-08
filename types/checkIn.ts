@@ -36,6 +36,11 @@ export interface MaterialQuantity {
   measurement: string;
 }
 
+export interface MaterialTotal {
+  measurement: string;
+  total: number;
+}
+
 export interface CheckInFormData {
   employeeName: string;
   startedAt: string | null;
@@ -50,6 +55,8 @@ export interface CheckInFormData {
   categories: CategoryQuantity[];
   valueMaterials: MaterialQuantity[];
   chargeMaterials: MaterialQuantity[];
+  valueMaterialsTotals: MaterialTotal[];
+  chargeMaterialsTotals: MaterialTotal[];
   suspectedValueNote: string | null;
   otherNotes: string | null;
 }
