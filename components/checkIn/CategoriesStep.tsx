@@ -33,6 +33,7 @@ export default function CategoriesStep({
   const [showQuantityInput, setShowQuantityInput] = useState(false);
   const [quantityInputIndex, setQuantityInputIndex] = useState<number | null>(null);
   const [quantityValue, setQuantityValue] = useState('');
+  const [hasCertificateMaterial, setHasCertificateMaterial] = useState<boolean | null>(null);
 
   const addCategoryRow = () => {
     const newCategories = [...formData.categories, { category: '', quantity: '' }];
@@ -78,77 +79,181 @@ export default function CategoriesStep({
     }, 0);
   };
 
+  const handleYesNo = (answer: boolean) => {
+    setHasCertificateMaterial(answer);
+    
+    if (answer) {
+      // If yes, initialize with one empty row if there are no categories yet
+      if (formData.categories.length === 0) {
+        updateFormData({ categories: [{ category: '', quantity: '' }] });
+      }
+    } else {
+      // If no, clear any existing categories
+      updateFormData({ categories: [] });
+    }
+  };
+
   const isFormValid = () => {
+    // If user hasn't answered the yes/no question yet
+    if (hasCertificateMaterial === null) {
+      return false;
+    }
+    
+    // If user answered "no", they can proceed
+    if (hasCertificateMaterial === false) {
+      return true;
+    }
+    
+    // If user answered "yes", they must fill in at least one category with quantity
     return formData.categories.length > 0 &&
       formData.categories.every(item => item.category && item.quantity);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Total Quantity for Certificate of Destruction by Category</Text>
-      <Text style={styles.sectionDescription}>
-        Add categories and quantities. All fields are required.
-      </Text>
-
-      {formData.categories.map((item, index) => (
-        <View key={index} style={styles.row}>
-          <View style={styles.rowContent}>
-            <View style={styles.field}>
-              <Text style={styles.label}>Category</Text>
-              <TouchableOpacity
-                style={styles.picker}
-                onPress={() => {
-                  setSelectedIndex(index);
-                  setShowCategoryPicker(true);
-                }}
-              >
-                <Text style={item.category ? styles.pickerText : styles.placeholderText}>
-                  {item.category || 'Select Category'}
-                </Text>
-              </TouchableOpacity>
+      <Text style={styles.sectionTitle}>Certificate of Destruction</Text>
+      
+      {/* Yes/No Question */}
+      <View style={styles.questionContainer}>
+        <Text style={styles.questionText}>
+          Was there any material in this load which requires a Certificate of Destruction?
+        </Text>
+        
+        <View style={styles.yesNoContainer}>
+          <TouchableOpacity
+            style={[
+              styles.yesNoButton,
+              hasCertificateMaterial === true && styles.yesNoButtonSelected,
+            ]}
+            onPress={() => handleYesNo(true)}
+          >
+            <View style={[
+              styles.radioCircle,
+              hasCertificateMaterial === true && styles.radioCircleSelected,
+            ]}>
+              {hasCertificateMaterial === true && (
+                <View style={styles.radioCircleInner} />
+              )}
             </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Quantity</Text>
-              <TouchableOpacity
-                style={styles.picker}
-                onPress={() => openQuantityInput(index)}
-              >
-                <Text style={item.quantity ? styles.pickerText : styles.placeholderText}>
-                  {item.quantity || 'Enter Quantity'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+            <Text style={[
+              styles.yesNoText,
+              hasCertificateMaterial === true && styles.yesNoTextSelected,
+            ]}>
+              Yes
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.removeButton}
-            onPress={() => removeCategoryRow(index)}
+            style={[
+              styles.yesNoButton,
+              hasCertificateMaterial === false && styles.yesNoButtonSelected,
+            ]}
+            onPress={() => handleYesNo(false)}
           >
-            <IconSymbol
-              ios_icon_name="trash.fill"
-              android_material_icon_name="delete"
-              size={20}
-              color={colors.secondary}
-            />
+            <View style={[
+              styles.radioCircle,
+              hasCertificateMaterial === false && styles.radioCircleSelected,
+            ]}>
+              {hasCertificateMaterial === false && (
+                <View style={styles.radioCircleInner} />
+              )}
+            </View>
+            <Text style={[
+              styles.yesNoText,
+              hasCertificateMaterial === false && styles.yesNoTextSelected,
+            ]}>
+              No
+            </Text>
           </TouchableOpacity>
         </View>
-      ))}
+      </View>
 
-      <TouchableOpacity style={styles.addButton} onPress={addCategoryRow}>
-        <IconSymbol
-          ios_icon_name="plus.circle.fill"
-          android_material_icon_name="add_circle"
-          size={24}
-          color={colors.primary}
-        />
-        <Text style={styles.addButtonText}>Add Category</Text>
-      </TouchableOpacity>
+      {/* Show category input only if user answered "yes" */}
+      {hasCertificateMaterial === true && (
+        <>
+          <Text style={styles.sectionDescription}>
+            Add categories and quantities. All fields are required.
+          </Text>
 
-      {formData.categories.length > 0 && (
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Total Quantity:</Text>
-          <Text style={styles.totalValue}>{getTotalQuantity()}</Text>
+          {formData.categories.map((item, index) => (
+            <View key={index} style={styles.row}>
+              <View style={styles.rowContent}>
+                <View style={styles.field}>
+                  <Text style={styles.label}>Category</Text>
+                  <TouchableOpacity
+                    style={styles.picker}
+                    onPress={() => {
+                      setSelectedIndex(index);
+                      setShowCategoryPicker(true);
+                    }}
+                  >
+                    <Text style={item.category ? styles.pickerText : styles.placeholderText}>
+                      {item.category || 'Select Category'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.field}>
+                  <Text style={styles.label}>Quantity</Text>
+                  <TouchableOpacity
+                    style={styles.picker}
+                    onPress={() => openQuantityInput(index)}
+                  >
+                    <Text style={item.quantity ? styles.pickerText : styles.placeholderText}>
+                      {item.quantity || 'Enter Quantity'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={() => removeCategoryRow(index)}
+              >
+                <IconSymbol
+                  ios_icon_name="trash.fill"
+                  android_material_icon_name="delete"
+                  size={20}
+                  color={colors.secondary}
+                />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <TouchableOpacity style={styles.addButton} onPress={addCategoryRow}>
+            <IconSymbol
+              ios_icon_name="plus.circle.fill"
+              android_material_icon_name="add_circle"
+              size={24}
+              color={colors.primary}
+            />
+            <Text style={styles.addButtonText}>Add Category</Text>
+          </TouchableOpacity>
+
+          {formData.categories.length > 0 && (
+            <View style={styles.totalContainer}>
+              <Text style={styles.totalLabel}>Total Quantity:</Text>
+              <Text style={styles.totalValue}>{getTotalQuantity()}</Text>
+            </View>
+          )}
+        </>
+      )}
+
+      {/* Show message if user answered "no" */}
+      {hasCertificateMaterial === false && (
+        <View style={styles.noMaterialContainer}>
+          <IconSymbol
+            ios_icon_name="checkmark.circle.fill"
+            android_material_icon_name="check_circle"
+            size={48}
+            color={colors.primary}
+          />
+          <Text style={styles.noMaterialText}>
+            No certificate of destruction material in this load.
+          </Text>
+          <Text style={styles.noMaterialSubtext}>
+            You can proceed to the next step.
+          </Text>
         </View>
       )}
 
@@ -238,12 +343,95 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 24,
+  },
+  questionContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  questionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 16,
+    lineHeight: 24,
+  },
+  yesNoContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  yesNoButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 16,
+    gap: 8,
+  },
+  yesNoButtonSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.primary,
+  },
+  radioCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioCircleSelected: {
+    borderColor: colors.primary,
+  },
+  radioCircleInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+  },
+  yesNoText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  yesNoTextSelected: {
+    color: colors.primary,
   },
   sectionDescription: {
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 24,
+  },
+  noMaterialContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 32,
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  noMaterialText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  noMaterialSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
   },
   row: {
     flexDirection: 'row',
