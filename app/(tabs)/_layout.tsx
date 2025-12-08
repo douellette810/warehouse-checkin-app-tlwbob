@@ -1,9 +1,11 @@
 
 import React from 'react';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
 
 export default function TabLayout() {
+  const pathname = usePathname();
+  
   const tabs: TabBarItem[] = [
     {
       name: '(home)',
@@ -19,6 +21,10 @@ export default function TabLayout() {
     },
   ];
 
+  // Hide the FloatingTabBar on the homepage
+  const isHomePage = pathname === '/(tabs)/(home)/' || pathname === '/(tabs)/(home)';
+  const shouldShowTabBar = !isHomePage;
+
   return (
     <>
       <Stack
@@ -30,7 +36,7 @@ export default function TabLayout() {
         <Stack.Screen key="home" name="(home)" />
         <Stack.Screen key="profile" name="profile" />
       </Stack>
-      <FloatingTabBar tabs={tabs} />
+      {shouldShowTabBar && <FloatingTabBar tabs={tabs} />}
     </>
   );
 }
