@@ -21,12 +21,22 @@ import * as FileSystem from 'expo-file-system/legacy';
 type AdminSection = 'employees' | 'companies' | 'categories' | 'value-scrap' | 'charge-materials' | 'i-series' | 'check-ins';
 
 export default function ProfileScreen() {
-  const [activeSection, setActiveSection] = useState<AdminSection>('check-ins');
+  const [expandedSection, setExpandedSection] = useState<AdminSection | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
-  const [data, setData] = useState<any[]>([]);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [data, setData] = useState<{ [key: string]: any[] }>({
+    employees: [],
+    companies: [],
+    categories: [],
+    'value-scrap': [],
+    'charge-materials': [],
+    'i-series': [],
+    'check-ins': [],
+  });
 
   const [employeeName, setEmployeeName] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -41,14 +51,21 @@ export default function ProfileScreen() {
   const [processorGeneration, setProcessorGeneration] = useState('');
 
   useEffect(() => {
-    loadData();
-  }, [activeSection]);
+    loadAllData();
+  }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadAllData = async () => {
+    const sections: AdminSection[] = ['employees', 'companies', 'categories', 'value-scrap', 'charge-materials', 'i-series', 'check-ins'];
+    
+    for (const section of sections) {
+      await loadDataForSection(section);
+    }
+  };
+
+  const loadDataForSection = async (section: AdminSection) => {
     try {
       let tableName = '';
-      switch (activeSection) {
+      switch (section) {
         case 'employees':
           tableName = 'employees';
           break;
@@ -81,22 +98,20 @@ export default function ProfileScreen() {
         console.log('Error loading data:', error);
       } else {
         console.log(`Loaded ${result?.length || 0} items from ${tableName}`);
-        setData(result || []);
+        setData(prev => ({ ...prev, [section]: result || [] }));
       }
     } catch (error) {
       console.log('Error loading data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleAdd = async () => {
+  const handleAdd = async (section: AdminSection) => {
     setLoading(true);
     try {
       let tableName = '';
       let insertData: any = {};
 
-      switch (activeSection) {
+      switch (section) {
         case 'employees':
           tableName = 'employees';
           insertData = { name: employeeName };
@@ -138,7 +153,7 @@ export default function ProfileScreen() {
         Alert.alert('Success', 'Item added successfully!');
         resetForm();
         setShowAddModal(false);
-        loadData();
+        loadDataForSection(section);
       }
     } catch (error) {
       console.log('Error adding data:', error);
@@ -148,9 +163,72 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    // Don't allow deletion of check-ins
-    if (activeSection === 'check-ins') {
+  const handleEdit = async (section: AdminSection) => {
+    if (!editingItem) return;
+    
+    setLoading(true);
+    try {
+      let tableName = '';
+      let updateData: any = {};
+
+      switch (section) {
+        case 'employees':
+          tableName = 'employees';
+          updateData = { name: employeeName };
+          break;
+        case 'companies':
+          tableName = 'companies';
+          updateData = {
+            name: companyName,
+            address: companyAddress,
+            contact_person: companyContact,
+            email: companyEmail,
+            phone: companyPhone,
+          };
+          break;
+        case 'categories':
+          tableName = 'categories';
+          updateData = { name: categoryName };
+          break;
+        case 'value-scrap':
+          tableName = 'value_scrap';
+          updateData = { name: materialName, measurement: materialMeasurement };
+          break;
+        case 'charge-materials':
+          tableName = 'charge_materials';
+          updateData = { name: materialName, measurement: materialMeasurement };
+          break;
+        case 'i-series':
+          tableName = 'i_series';
+          updateData = { processor_series: processorSeries, processor_generation: processorGeneration };
+          break;
+      }
+
+      const { error } = await supabase
+        .from(tableName)
+        .update(updateData)
+        .eq('id', editingItem.id);
+
+      if (error) {
+        console.log('Error updating data:', error);
+        Alert.alert('Error', 'Failed to update item. Please try again.');
+      } else {
+        Alert.alert('Success', 'Item updated successfully!');
+        resetForm();
+        setShowEditModal(false);
+        setEditingItem(null);
+        loadDataForSection(section);
+      }
+    } catch (error) {
+      console.log('Error updating data:', error);
+      Alert.alert('Error', 'Failed to update item. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (section: AdminSection, id: string) => {
+    if (section === 'check-ins') {
       Alert.alert(
         'Cannot Delete',
         'Check-ins cannot be deleted for record-keeping purposes. They are permanent records.'
@@ -170,7 +248,7 @@ export default function ProfileScreen() {
             setLoading(true);
             try {
               let tableName = '';
-              switch (activeSection) {
+              switch (section) {
                 case 'employees':
                   tableName = 'employees';
                   break;
@@ -197,7 +275,7 @@ export default function ProfileScreen() {
                 console.log('Error deleting data:', error);
                 Alert.alert('Error', 'Failed to delete item. Please try again.');
               } else {
-                loadData();
+                loadDataForSection(section);
               }
             } catch (error) {
               console.log('Error deleting data:', error);
@@ -209,6 +287,37 @@ export default function ProfileScreen() {
         },
       ]
     );
+  };
+
+  const openEditModal = (section: AdminSection, item: any) => {
+    setEditingItem(item);
+    
+    switch (section) {
+      case 'employees':
+        setEmployeeName(item.name);
+        break;
+      case 'companies':
+        setCompanyName(item.name);
+        setCompanyAddress(item.address);
+        setCompanyContact(item.contact_person);
+        setCompanyEmail(item.email);
+        setCompanyPhone(item.phone);
+        break;
+      case 'categories':
+        setCategoryName(item.name);
+        break;
+      case 'value-scrap':
+      case 'charge-materials':
+        setMaterialName(item.name);
+        setMaterialMeasurement(item.measurement);
+        break;
+      case 'i-series':
+        setProcessorSeries(item.processor_series);
+        setProcessorGeneration(item.processor_generation);
+        break;
+    }
+    
+    setShowEditModal(true);
   };
 
   const handleViewCheckIn = (checkIn: any) => {
@@ -391,7 +500,8 @@ export default function ProfileScreen() {
   };
 
   const handleShareAllCheckIns = async () => {
-    if (data.length === 0) {
+    const checkIns = data['check-ins'];
+    if (checkIns.length === 0) {
       Alert.alert('No Data', 'There are no check-ins to share.');
       return;
     }
@@ -400,10 +510,10 @@ export default function ProfileScreen() {
       let allCheckInsText = '═══════════════════════════════════════\n';
       allCheckInsText += '   ALL WAREHOUSE CHECK-IN REPORTS\n';
       allCheckInsText += '═══════════════════════════════════════\n\n';
-      allCheckInsText += `Total Check-Ins: ${data.length}\n`;
+      allCheckInsText += `Total Check-Ins: ${checkIns.length}\n`;
       allCheckInsText += `Generated: ${new Date().toLocaleString('en-US')}\n\n`;
 
-      data.forEach((checkIn, index) => {
+      checkIns.forEach((checkIn, index) => {
         allCheckInsText += `\n\n${'═'.repeat(39)}\n`;
         allCheckInsText += `CHECK-IN #${index + 1}\n`;
         allCheckInsText += `${'═'.repeat(39)}\n\n`;
@@ -455,8 +565,8 @@ export default function ProfileScreen() {
     setProcessorGeneration('');
   };
 
-  const renderAddForm = () => {
-    switch (activeSection) {
+  const renderAddForm = (section: AdminSection) => {
+    switch (section) {
       case 'employees':
         return (
           <TextInput
@@ -755,20 +865,33 @@ export default function ProfileScreen() {
     );
   };
 
-  const renderDataItem = (item: any) => {
-    switch (activeSection) {
+  const renderDataItem = (section: AdminSection, item: any) => {
+    switch (section) {
       case 'employees':
         return (
           <View key={item.id} style={styles.dataItem}>
             <Text style={styles.dataItemText}>{item.name}</Text>
-            <TouchableOpacity onPress={() => handleDelete(item.id)}>
-              <IconSymbol
-                ios_icon_name="trash.fill"
-                android_material_icon_name="delete"
-                size={20}
-                color={colors.secondary}
-              />
-            </TouchableOpacity>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity 
+                onPress={() => openEditModal(section, item)}
+                style={styles.iconButton}
+              >
+                <IconSymbol
+                  ios_icon_name="pencil"
+                  android_material_icon_name="edit"
+                  size={20}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDelete(section, item.id)}>
+                <IconSymbol
+                  ios_icon_name="trash.fill"
+                  android_material_icon_name="delete"
+                  size={20}
+                  color={colors.secondary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         );
       case 'companies':
@@ -779,28 +902,54 @@ export default function ProfileScreen() {
               <Text style={styles.dataItemSubtext}>{item.address}</Text>
               <Text style={styles.dataItemSubtext}>{item.contact_person}</Text>
             </View>
-            <TouchableOpacity onPress={() => handleDelete(item.id)}>
-              <IconSymbol
-                ios_icon_name="trash.fill"
-                android_material_icon_name="delete"
-                size={20}
-                color={colors.secondary}
-              />
-            </TouchableOpacity>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity 
+                onPress={() => openEditModal(section, item)}
+                style={styles.iconButton}
+              >
+                <IconSymbol
+                  ios_icon_name="pencil"
+                  android_material_icon_name="edit"
+                  size={20}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDelete(section, item.id)}>
+                <IconSymbol
+                  ios_icon_name="trash.fill"
+                  android_material_icon_name="delete"
+                  size={20}
+                  color={colors.secondary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         );
       case 'categories':
         return (
           <View key={item.id} style={styles.dataItem}>
             <Text style={styles.dataItemText}>{item.name}</Text>
-            <TouchableOpacity onPress={() => handleDelete(item.id)}>
-              <IconSymbol
-                ios_icon_name="trash.fill"
-                android_material_icon_name="delete"
-                size={20}
-                color={colors.secondary}
-              />
-            </TouchableOpacity>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity 
+                onPress={() => openEditModal(section, item)}
+                style={styles.iconButton}
+              >
+                <IconSymbol
+                  ios_icon_name="pencil"
+                  android_material_icon_name="edit"
+                  size={20}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDelete(section, item.id)}>
+                <IconSymbol
+                  ios_icon_name="trash.fill"
+                  android_material_icon_name="delete"
+                  size={20}
+                  color={colors.secondary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         );
       case 'value-scrap':
@@ -811,14 +960,27 @@ export default function ProfileScreen() {
               <Text style={styles.dataItemTitle}>{item.name}</Text>
               <Text style={styles.dataItemSubtext}>Measurement: {item.measurement}</Text>
             </View>
-            <TouchableOpacity onPress={() => handleDelete(item.id)}>
-              <IconSymbol
-                ios_icon_name="trash.fill"
-                android_material_icon_name="delete"
-                size={20}
-                color={colors.secondary}
-              />
-            </TouchableOpacity>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity 
+                onPress={() => openEditModal(section, item)}
+                style={styles.iconButton}
+              >
+                <IconSymbol
+                  ios_icon_name="pencil"
+                  android_material_icon_name="edit"
+                  size={20}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDelete(section, item.id)}>
+                <IconSymbol
+                  ios_icon_name="trash.fill"
+                  android_material_icon_name="delete"
+                  size={20}
+                  color={colors.secondary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         );
       case 'i-series':
@@ -828,14 +990,27 @@ export default function ProfileScreen() {
               <Text style={styles.dataItemTitle}>{item.processor_series}</Text>
               <Text style={styles.dataItemSubtext}>Generation: {item.processor_generation}</Text>
             </View>
-            <TouchableOpacity onPress={() => handleDelete(item.id)}>
-              <IconSymbol
-                ios_icon_name="trash.fill"
-                android_material_icon_name="delete"
-                size={20}
-                color={colors.secondary}
-              />
-            </TouchableOpacity>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity 
+                onPress={() => openEditModal(section, item)}
+                style={styles.iconButton}
+              >
+                <IconSymbol
+                  ios_icon_name="pencil"
+                  android_material_icon_name="edit"
+                  size={20}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDelete(section, item.id)}>
+                <IconSymbol
+                  ios_icon_name="trash.fill"
+                  android_material_icon_name="delete"
+                  size={20}
+                  color={colors.secondary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         );
       case 'check-ins':
@@ -865,119 +1040,109 @@ export default function ProfileScreen() {
     }
   };
 
+  const getSectionTitle = (section: AdminSection) => {
+    switch (section) {
+      case 'employees':
+        return 'Employees';
+      case 'companies':
+        return 'Companies';
+      case 'categories':
+        return 'Categories';
+      case 'value-scrap':
+        return 'Value Scrap';
+      case 'charge-materials':
+        return 'Charge Materials';
+      case 'i-series':
+        return 'i-Series';
+      case 'check-ins':
+        return 'Check-Ins';
+    }
+  };
+
+  const renderAccordionSection = (section: AdminSection) => {
+    const isExpanded = expandedSection === section;
+    const sectionData = data[section] || [];
+    const itemCount = sectionData.length;
+
+    return (
+      <View key={section} style={styles.accordionSection}>
+        <TouchableOpacity
+          style={styles.accordionHeader}
+          onPress={() => setExpandedSection(isExpanded ? null : section)}
+        >
+          <View style={styles.accordionHeaderLeft}>
+            <Text style={styles.accordionTitle}>{getSectionTitle(section)}</Text>
+            <Text style={styles.accordionCount}>({itemCount})</Text>
+          </View>
+          <IconSymbol
+            ios_icon_name={isExpanded ? 'chevron.up' : 'chevron.down'}
+            android_material_icon_name={isExpanded ? 'expand_less' : 'expand_more'}
+            size={24}
+            color={colors.text}
+          />
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.accordionContent}>
+            {section === 'check-ins' && sectionData.length > 0 && (
+              <TouchableOpacity
+                style={styles.shareAllButton}
+                onPress={handleShareAllCheckIns}
+              >
+                <IconSymbol
+                  ios_icon_name="square.and.arrow.up.fill"
+                  android_material_icon_name="share"
+                  size={20}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.shareAllButtonText}>Share / Print All</Text>
+              </TouchableOpacity>
+            )}
+
+            {section !== 'check-ins' && (
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => {
+                  resetForm();
+                  setShowAddModal(true);
+                }}
+              >
+                <IconSymbol
+                  ios_icon_name="plus.circle.fill"
+                  android_material_icon_name="add_circle"
+                  size={20}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.addButtonText}>Add New</Text>
+              </TouchableOpacity>
+            )}
+
+            {sectionData.length === 0 ? (
+              <Text style={styles.emptyText}>
+                {section === 'check-ins' 
+                  ? 'No check-ins found. Complete a check-in to see it here.'
+                  : 'No data available'}
+              </Text>
+            ) : (
+              <ScrollView style={styles.dataList} nestedScrollEnabled>
+                {sectionData.map((item) => renderDataItem(section, item))}
+              </ScrollView>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Admin Panel</Text>
-        <Text style={styles.headerSubtitle}>Manage warehouse data and view check-ins</Text>
+        <Text style={styles.headerSubtitle}>Manage/Edit Warehouse Data and View/Print Check-Ins</Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsContainer}
-        contentContainerStyle={styles.tabsContent}
-      >
-        <TouchableOpacity
-          style={[styles.tab, activeSection === 'check-ins' && styles.tabActive]}
-          onPress={() => setActiveSection('check-ins')}
-        >
-          <Text style={[styles.tabText, activeSection === 'check-ins' && styles.tabTextActive]}>
-            Check-Ins ({data.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeSection === 'employees' && styles.tabActive]}
-          onPress={() => setActiveSection('employees')}
-        >
-          <Text style={[styles.tabText, activeSection === 'employees' && styles.tabTextActive]}>
-            Employees
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeSection === 'companies' && styles.tabActive]}
-          onPress={() => setActiveSection('companies')}
-        >
-          <Text style={[styles.tabText, activeSection === 'companies' && styles.tabTextActive]}>
-            Companies
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeSection === 'categories' && styles.tabActive]}
-          onPress={() => setActiveSection('categories')}
-        >
-          <Text style={[styles.tabText, activeSection === 'categories' && styles.tabTextActive]}>
-            Categories
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeSection === 'value-scrap' && styles.tabActive]}
-          onPress={() => setActiveSection('value-scrap')}
-        >
-          <Text style={[styles.tabText, activeSection === 'value-scrap' && styles.tabTextActive]}>
-            Value Scrap
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeSection === 'charge-materials' && styles.tabActive]}
-          onPress={() => setActiveSection('charge-materials')}
-        >
-          <Text style={[styles.tabText, activeSection === 'charge-materials' && styles.tabTextActive]}>
-            Charge Materials
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeSection === 'i-series' && styles.tabActive]}
-          onPress={() => setActiveSection('i-series')}
-        >
-          <Text style={[styles.tabText, activeSection === 'i-series' && styles.tabTextActive]}>
-            i-Series
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        {activeSection === 'check-ins' && data.length > 0 && (
-          <TouchableOpacity
-            style={styles.shareAllButton}
-            onPress={handleShareAllCheckIns}
-          >
-            <IconSymbol
-              ios_icon_name="square.and.arrow.up.fill"
-              android_material_icon_name="share"
-              size={24}
-              color="#FFFFFF"
-            />
-            <Text style={styles.shareAllButtonText}>Share / Print All Check-Ins</Text>
-          </TouchableOpacity>
-        )}
-
-        {activeSection !== 'check-ins' && (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowAddModal(true)}
-          >
-            <IconSymbol
-              ios_icon_name="plus.circle.fill"
-              android_material_icon_name="add_circle"
-              size={24}
-              color="#FFFFFF"
-            />
-            <Text style={styles.addButtonText}>Add New</Text>
-          </TouchableOpacity>
-        )}
-
-        {loading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
-        ) : data.length === 0 ? (
-          <Text style={styles.emptyText}>
-            {activeSection === 'check-ins' 
-              ? 'No check-ins found. Complete a check-in to see it here.'
-              : 'No data available'}
-          </Text>
-        ) : (
-          data.map(renderDataItem)
-        )}
+        {(['check-ins', 'employees', 'companies', 'categories', 'value-scrap', 'charge-materials', 'i-series'] as AdminSection[]).map(renderAccordionSection)}
       </ScrollView>
 
       <Modal
@@ -989,12 +1154,14 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              Add {activeSection.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              Add {expandedSection ? getSectionTitle(expandedSection) : ''}
             </Text>
-            {renderAddForm()}
+            <ScrollView style={styles.modalForm}>
+              {expandedSection && renderAddForm(expandedSection)}
+            </ScrollView>
             <TouchableOpacity
               style={styles.saveButton}
-              onPress={handleAdd}
+              onPress={() => expandedSection && handleAdd(expandedSection)}
               disabled={loading}
             >
               {loading ? (
@@ -1017,13 +1184,52 @@ export default function ProfileScreen() {
       </Modal>
 
       <Modal
+        visible={showEditModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              Edit {expandedSection ? getSectionTitle(expandedSection) : ''}
+            </Text>
+            <ScrollView style={styles.modalForm}>
+              {expandedSection && renderAddForm(expandedSection)}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={() => expandedSection && handleEdit(expandedSection)}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => {
+                setShowEditModal(false);
+                setEditingItem(null);
+                resetForm();
+              }}
+            >
+              <Text style={styles.modalCloseButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
         visible={showViewModal}
         transparent
         animationType="slide"
         onRequestClose={() => setShowViewModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.viewModalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Check-In Details</Text>
               <TouchableOpacity onPress={() => setShowViewModal(false)}>
@@ -1066,39 +1272,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
-  tabsContainer: {
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  tabsContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginHorizontal: 4,
-    borderRadius: 20,
-    backgroundColor: colors.background,
-  },
-  tabActive: {
-    backgroundColor: colors.primary,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-  },
   content: {
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
+    padding: 16,
     paddingBottom: 120,
+  },
+  accordionSection: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: colors.card,
+  },
+  accordionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  accordionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginRight: 8,
+  },
+  accordionCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  accordionContent: {
+    padding: 16,
+    paddingTop: 0,
+    backgroundColor: colors.background,
+  },
+  dataList: {
+    maxHeight: 400,
   },
   addButton: {
     flexDirection: 'row',
@@ -1106,11 +1323,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
     borderRadius: 8,
-    padding: 16,
-    marginBottom: 20,
+    padding: 12,
+    marginBottom: 12,
   },
   addButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
     marginLeft: 8,
@@ -1121,11 +1338,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.secondary,
     borderRadius: 8,
-    padding: 16,
-    marginBottom: 20,
+    padding: 12,
+    marginBottom: 12,
   },
   shareAllButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
     marginLeft: 8,
@@ -1146,14 +1363,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginLeft: 8,
   },
-  loader: {
-    marginTop: 40,
-  },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginTop: 40,
+    marginTop: 20,
+    marginBottom: 20,
   },
   dataItem: {
     flexDirection: 'row',
@@ -1161,8 +1376,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.card,
     borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -1170,19 +1385,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dataItemText: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.text,
     fontWeight: '500',
   },
   dataItemTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: colors.text,
     marginBottom: 4,
   },
   dataItemSubtext: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconButton: {
+    marginRight: 12,
   },
   modalOverlay: {
     flex: 1,
@@ -1194,7 +1416,15 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '90%',
+    maxHeight: '70%',
+  },
+  viewModalContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '85%',
+    minHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1206,6 +1436,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
+  },
+  modalForm: {
+    maxHeight: 300,
   },
   input: {
     backgroundColor: colors.background,
