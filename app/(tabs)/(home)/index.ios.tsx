@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
@@ -46,7 +47,10 @@ export default function HomeScreen() {
         <Text style={styles.headerSubtitle}>Select an option to continue</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+      >
         <TouchableOpacity style={styles.optionCard} onPress={handleCheckInPress}>
           <View style={styles.iconContainer}>
             <IconSymbol
@@ -76,7 +80,7 @@ export default function HomeScreen() {
             Manage data and view check-ins
           </Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       <Modal
         visible={showAdminLogin}
@@ -140,7 +144,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: colors.card,
-    paddingTop: 60,
+    paddingTop: 48,
     paddingBottom: 24,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
@@ -158,10 +162,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     padding: 20,
-    justifyContent: 'center',
+    paddingBottom: 120,
     gap: 20,
   },
   optionCard: {

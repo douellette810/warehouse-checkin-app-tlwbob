@@ -28,10 +28,6 @@ export default function HomeScreen() {
     setShowAdminLogin(true);
   };
 
-  const handleExportPress = () => {
-    router.push('/(tabs)/export-csv');
-  };
-
   const handleAdminLogin = () => {
     // Default credentials
     if (username === 'admin' && password === 'password') {
@@ -82,21 +78,6 @@ export default function HomeScreen() {
           <Text style={styles.optionTitle}>Admin</Text>
           <Text style={styles.optionDescription}>
             Manage data and view check-ins
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.optionCard} onPress={handleExportPress}>
-          <View style={styles.iconContainer}>
-            <IconSymbol
-              ios_icon_name="square.and.arrow.up.fill"
-              android_material_icon_name="upload"
-              size={64}
-              color="#4CAF50"
-            />
-          </View>
-          <Text style={styles.optionTitle}>Export CSV</Text>
-          <Text style={styles.optionDescription}>
-            Export data to CSV for SQL Server
           </Text>
         </TouchableOpacity>
       </ScrollView>
