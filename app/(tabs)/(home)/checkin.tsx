@@ -12,7 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles/commonStyles';
-import { supabase } from '@/utils/supabase';
+import { localDb } from '@/app/integrations/local-db/client';
 import { Employee, Company, Category, Material, ISeriesProcessor, CheckInFormData, FormStep } from '@/types/checkIn';
 import BasicInfoStep from '@/components/checkIn/BasicInfoStep';
 import CategoriesStep from '@/components/checkIn/CategoriesStep';
@@ -73,59 +73,38 @@ export default function CheckInScreen() {
       setLoading(true);
       
       const [
-        employeesRes,
-        companiesRes,
-        categoriesRes,
-        valueScrapRes,
-        chargeMaterialsRes,
-        iSeriesRes,
+        employeesData,
+        companiesData,
+        categoriesData,
+        valueScrapData,
+        chargeMaterialsData,
+        iSeriesData,
       ] = await Promise.all([
-        supabase.from('employees').select('*').order('name'),
-        supabase.from('companies').select('*').order('name'),
-        supabase.from('categories').select('*').order('name'),
-        supabase.from('value_scrap').select('*').order('name'),
-        supabase.from('charge_materials').select('*').order('name'),
-        supabase.from('i_series').select('*').order('processor_series, processor_generation'),
+        localDb.employees.getAll(),
+        localDb.companies.getAll(),
+        localDb.categories.getAll(),
+        localDb.valueScrap.getAll(),
+        localDb.chargeMaterials.getAll(),
+        localDb.iSeries.getAll(),
       ]);
 
-      if (employeesRes.error) {
-        console.log('Error loading employees:', employeesRes.error);
-      } else {
-        setEmployees(employeesRes.data || []);
-      }
+      setEmployees(employeesData || []);
+      setCompanies(companiesData || []);
+      setCategories(categoriesData || []);
+      setValueScrap(valueScrapData || []);
+      setChargeMaterials(chargeMaterialsData || []);
+      setISeriesProcessors(iSeriesData || []);
 
-      if (companiesRes.error) {
-        console.log('Error loading companies:', companiesRes.error);
-      } else {
-        setCompanies(companiesRes.data || []);
-      }
-
-      if (categoriesRes.error) {
-        console.log('Error loading categories:', categoriesRes.error);
-      } else {
-        setCategories(categoriesRes.data || []);
-      }
-
-      if (valueScrapRes.error) {
-        console.log('Error loading value scrap:', valueScrapRes.error);
-      } else {
-        setValueScrap(valueScrapRes.data || []);
-      }
-
-      if (chargeMaterialsRes.error) {
-        console.log('Error loading charge materials:', chargeMaterialsRes.error);
-      } else {
-        setChargeMaterials(chargeMaterialsRes.data || []);
-      }
-
-      if (iSeriesRes.error) {
-        console.log('Error loading i-Series processors:', iSeriesRes.error);
-      } else {
-        setISeriesProcessors(iSeriesRes.data || []);
-      }
+      console.log('Loaded data from local database:');
+      console.log('- Employees:', employeesData.length);
+      console.log('- Companies:', companiesData.length);
+      console.log('- Categories:', categoriesData.length);
+      console.log('- Value Scrap:', valueScrapData.length);
+      console.log('- Charge Materials:', chargeMaterialsData.length);
+      console.log('- i-Series:', iSeriesData.length);
     } catch (error) {
       console.log('Error loading data:', error);
-      Alert.alert('Error', 'Failed to load data. Please check your Supabase connection.');
+      Alert.alert('Error', 'Failed to load data from local database. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -214,36 +193,6 @@ export default function CheckInScreen() {
     console.log('Form reset complete. Ready for new check-in.');
   };
 
-  const confirmCheckInSaved = async (checkInId: string): Promise<boolean> => {
-    try {
-      console.log('Confirming check-in saved with ID:', checkInId);
-      
-      // Query the database to confirm the check-in exists
-      const { data, error } = await supabase
-        .from('check_ins')
-        .select('id, employee_name, company_name, created_at')
-        .eq('id', checkInId)
-        .single();
-
-      if (error) {
-        console.error('Error confirming check-in:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        return false;
-      }
-
-      if (!data) {
-        console.error('Check-in not found in database after save. ID:', checkInId);
-        return false;
-      }
-
-      console.log('Check-in confirmed in database:', data);
-      return true;
-    } catch (error) {
-      console.error('Exception during check-in confirmation:', error);
-      return false;
-    }
-  };
-
   const submitForm = async () => {
     // Prevent multiple submissions
     if (submitting) {
@@ -253,101 +202,23 @@ export default function CheckInScreen() {
 
     try {
       setSubmitting(true);
-      console.log('Starting check-in submission...');
+      console.log('Starting check-in submission to local database...');
       
       // Ensure finishedAt is set
       const finishedAt = formData.finishedAt || new Date().toISOString();
       
-      // Prepare the data to insert
+      // Update formData with finishedAt
       const checkInData = {
-        employee_name: formData.employeeName,
-        started_at: formData.startedAt,
-        finished_at: finishedAt,
-        total_time: formData.totalTime,
-        company_id: formData.companyId,
-        company_name: formData.companyName,
-        address: formData.address,
-        contact_person: formData.contactPerson,
-        email: formData.email,
-        phone: formData.phone,
-        categories: formData.categories,
-        value_scrap: formData.valueScrap,
-        charge_materials: formData.chargeMaterials,
-        value_scrap_totals: formData.valueScrapTotals,
-        charge_materials_totals: formData.chargeMaterialsTotals,
-        has_i_series_pcs: formData.hasISeriesPcs || false,
-        has_i_series_laptops: formData.hasISeriesLaptops || false,
-        i_series_pcs: formData.iSeriesPcs,
-        i_series_laptops: formData.iSeriesLaptops,
-        suspected_value_note: formData.suspectedValueNote,
-        other_notes: formData.otherNotes,
+        ...formData,
+        finishedAt,
       };
 
-      console.log('Inserting check-in data:', JSON.stringify(checkInData, null, 2));
+      console.log('Inserting check-in data to local database...');
 
-      // Insert the check-in
-      const { data, error } = await supabase
-        .from('check_ins')
-        .insert(checkInData)
-        .select('id')
-        .single();
+      // Insert the check-in to local database
+      await localDb.checkIns.add(checkInData);
 
-      if (error) {
-        console.error('Error submitting check-in:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        
-        // Trigger error haptic feedback
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        
-        Alert.alert(
-          'Save Failed',
-          `Failed to save check-in. Error: ${error.message}. Please try again or contact support.`
-        );
-        
-        setSubmitting(false);
-        return;
-      }
-
-      if (!data || !data.id) {
-        console.error('No data returned from insert operation');
-        
-        // Trigger error haptic feedback
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        
-        Alert.alert(
-          'Save Failed',
-          'Failed to save check-in. No ID returned from database. Please try again.'
-        );
-        
-        setSubmitting(false);
-        return;
-      }
-
-      const checkInId = data.id;
-      console.log('Check-in inserted with ID:', checkInId);
-
-      // Confirm the check-in was saved
-      console.log('Confirming check-in was saved...');
-      const confirmed = await confirmCheckInSaved(checkInId);
-
-      if (!confirmed) {
-        console.error('Check-in confirmation failed for ID:', checkInId);
-        
-        // Trigger warning haptic feedback
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        
-        Alert.alert(
-          'Save Verification Failed',
-          'The check-in was submitted but could not be verified in the database. Please check the admin panel to confirm it was saved.'
-        );
-        
-        setSubmitting(false);
-        return;
-      }
-
-      console.log('Check-in successfully saved and confirmed!');
+      console.log('Check-in successfully saved to local database!');
       
       // Trigger success haptic feedback
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -365,7 +236,7 @@ export default function CheckInScreen() {
       // Show success message AFTER resetting (non-blocking)
       Alert.alert(
         '✓ Check-In Saved Successfully!',
-        `Employee: ${employeeName}\nCompany: ${companyName}\n\nThe form has been reset and is ready for the next check-in.`,
+        `Employee: ${employeeName}\nCompany: ${companyName}\n\nThe form has been reset and is ready for the next check-in.\n\n📱 Data saved to local device storage.`,
         [{ text: 'OK' }]
       );
       
@@ -424,9 +295,9 @@ export default function CheckInScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading data...</Text>
+        <Text style={styles.loadingText}>Loading data from local database...</Text>
         <Text style={styles.setupText}>
-          Make sure Supabase is configured with the required tables.
+          If this is your first time, please add employees, companies, and other data in the Admin Panel.
         </Text>
       </View>
     );

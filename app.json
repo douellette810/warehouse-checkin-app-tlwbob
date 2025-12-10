@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "WareHouse CheckIn",
-    "slug": "WareHouse CheckIn",
+    "slug": "warehouse-checkin-app-tlwbob",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -25,7 +25,7 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.Natively"
+      "package": "com.cirsol.whcheckin"
     },
     "web": {
       "favicon": "./assets/images/final_quest_240x240.png",
