@@ -91,13 +91,30 @@ npm install --save-dev nodemon
 
 ### Step 4: Create Configuration File
 
-Create a file named `.env` in the `warehouse-api` directory:
+Create a file named `.env` in the `warehouse-api` directory.
+
+**For Windows Authentication (Recommended):**
 
 ```env
 # SQL Server Configuration
 DB_SERVER=CRSERV\\SQLEXPRESS
-DB_USER=CRSERV\\Administrator
-DB_PASSWORD=W1@3!-j/R
+DB_AUTH_MODE=windows
+DB_DATABASE=WarehouseCheckIn
+DB_ENCRYPT=false
+DB_TRUST_SERVER_CERTIFICATE=true
+
+# API Configuration
+PORT=3000
+```
+
+**For SQL Server Authentication (Alternative):**
+
+```env
+# SQL Server Configuration
+DB_SERVER=CRSERV\\SQLEXPRESS
+DB_AUTH_MODE=sql
+DB_USER=your_sql_username
+DB_PASSWORD=your_sql_password
 DB_DATABASE=WarehouseCheckIn
 DB_ENCRYPT=false
 DB_TRUST_SERVER_CERTIFICATE=true
@@ -109,7 +126,8 @@ PORT=3000
 **Important Notes:**
 - Replace `WarehouseCheckIn` with your actual database name
 - The double backslash `\\` in `CRSERV\\SQLEXPRESS` is required
-- Keep this file secure - it contains your database password
+- For Windows Authentication, do NOT include DB_USER or DB_PASSWORD
+- Keep this file secure - it may contain sensitive information
 
 ### Step 5: Copy Server Template
 
@@ -140,98 +158,7 @@ Edit the `package.json` file in your `warehouse-api` directory and add these scr
 }
 ```
 
-### Step 7: Create SQL Server Database and Tables
-
-1. Open **SQL Server Management Studio** (SSMS)
-2. Connect to `CRSERV\SQLEXPRESS`
-3. Run this SQL script to create the database and tables:
-
-```sql
--- Create database
-CREATE DATABASE WarehouseCheckIn;
-GO
-
-USE WarehouseCheckIn;
-GO
-
--- Employees table
-CREATE TABLE employees (
-    id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    name NVARCHAR(255) NOT NULL,
-    created_at DATETIME DEFAULT GETDATE()
-);
-
--- Companies table
-CREATE TABLE companies (
-    id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    name NVARCHAR(255) NOT NULL,
-    address NVARCHAR(500) NOT NULL,
-    contact_person NVARCHAR(255) NOT NULL,
-    email NVARCHAR(255) NOT NULL,
-    phone NVARCHAR(50) NOT NULL,
-    created_at DATETIME DEFAULT GETDATE()
-);
-
--- Categories table
-CREATE TABLE categories (
-    id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    name NVARCHAR(255) NOT NULL,
-    created_at DATETIME DEFAULT GETDATE()
-);
-
--- Value Scrap table
-CREATE TABLE value_scrap (
-    id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    name NVARCHAR(255) NOT NULL,
-    measurement NVARCHAR(50) NOT NULL,
-    created_at DATETIME DEFAULT GETDATE()
-);
-
--- Charge Materials table
-CREATE TABLE charge_materials (
-    id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    name NVARCHAR(255) NOT NULL,
-    measurement NVARCHAR(50) NOT NULL,
-    created_at DATETIME DEFAULT GETDATE()
-);
-
--- i-Series table
-CREATE TABLE i_series (
-    id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    processor_series NVARCHAR(100) NOT NULL,
-    processor_generation NVARCHAR(100) NOT NULL,
-    created_at DATETIME DEFAULT GETDATE()
-);
-
--- Check-ins table
-CREATE TABLE check_ins (
-    id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    employee_name NVARCHAR(255) NOT NULL,
-    total_time NVARCHAR(50) NOT NULL,
-    company_id UNIQUEIDENTIFIER NOT NULL,
-    company_name NVARCHAR(255) NOT NULL,
-    address NVARCHAR(500) NOT NULL,
-    contact_person NVARCHAR(255) NOT NULL,
-    email NVARCHAR(255) NOT NULL,
-    phone NVARCHAR(50) NOT NULL,
-    categories NVARCHAR(MAX),
-    value_scrap NVARCHAR(MAX),
-    charge_materials NVARCHAR(MAX),
-    suspected_value_note NVARCHAR(MAX),
-    other_notes NVARCHAR(MAX),
-    created_at DATETIME DEFAULT GETDATE(),
-    started_at DATETIME,
-    finished_at DATETIME,
-    value_scrap_totals NVARCHAR(MAX),
-    charge_materials_totals NVARCHAR(MAX),
-    has_i_series_pcs BIT DEFAULT 0,
-    has_i_series_laptops BIT DEFAULT 0,
-    i_series_pcs NVARCHAR(MAX),
-    i_series_laptops NVARCHAR(MAX)
-);
-```
-
-### Step 8: Enable SQL Server TCP/IP (If Not Already Enabled)
+### Step 7: Enable SQL Server TCP/IP (If Not Already Enabled)
 
 1. Open **SQL Server Configuration Manager**
 2. Navigate to: SQL Server Network Configuration → Protocols for SQLEXPRESS
@@ -240,6 +167,20 @@ CREATE TABLE check_ins (
    - Go to SQL Server Services
    - Right-click **SQL Server (SQLEXPRESS)**
    - Click **Restart**
+
+### Step 8: Configure SQL Server Authentication Mode
+
+**For Windows Authentication:**
+1. The Node.js server must run under a Windows account that has SQL Server access
+2. By default, the local Administrator account should have access
+3. No additional SQL Server configuration needed
+
+**For SQL Server Authentication:**
+1. Open **SQL Server Management Studio** (SSMS)
+2. Right-click the server → Properties → Security
+3. Select "SQL Server and Windows Authentication mode"
+4. Click OK and restart SQL Server
+5. Create a SQL Server login with appropriate permissions
 
 ### Step 9: Configure Windows Firewall
 
@@ -266,6 +207,7 @@ This allows devices on your local network to access the API on port 3000.
    ═══════════════════════════════════════════════════════════
      ✅ Server running on: http://localhost:3000
      ✅ Network access: http://<your-ip>:3000
+     🔐 Authentication: windows
      ✅ Connected to SQL Server
         Server: CRSERV\SQLEXPRESS
         Database: WarehouseCheckIn
@@ -293,7 +235,8 @@ You should see:
   "success": true,
   "message": "Warehouse API is running",
   "timestamp": "2024-01-15T10:30:00.000Z",
-  "database": "connected"
+  "database": "connected",
+  "authMode": "windows"
 }
 ```
 
@@ -324,7 +267,7 @@ You should see:
    - Consider using a VPN if accessing remotely
 
 2. **Database Security:**
-   - Use strong passwords
+   - Use strong passwords for SQL Server Authentication
    - Limit database user permissions
    - Enable SQL Server authentication logging
 
@@ -406,6 +349,40 @@ This keeps the API running even after you log out of Windows.
 ---
 
 ## 🐛 Troubleshooting
+
+### Problem: "Login failed for user 'CRSERV\Administrator'"
+
+**This is the error you're experiencing!**
+
+**Solutions:**
+
+1. **Use Windows Authentication (Recommended):**
+   - Edit your `.env` file:
+     ```env
+     DB_AUTH_MODE=windows
+     ```
+   - Remove or comment out `DB_USER` and `DB_PASSWORD` lines
+   - The server will use the Windows account running Node.js
+
+2. **Verify SQL Server allows Windows Authentication:**
+   - Open SQL Server Management Studio
+   - Right-click server → Properties → Security
+   - Ensure "Windows Authentication mode" or "SQL Server and Windows Authentication mode" is selected
+
+3. **Check Windows account has SQL Server access:**
+   - In SSMS, expand Security → Logins
+   - Look for `CRSERV\Administrator`
+   - If not present, right-click Logins → New Login
+   - Add `CRSERV\Administrator` with appropriate permissions
+
+4. **Alternative: Use SQL Server Authentication:**
+   - Create a SQL Server login in SSMS
+   - Edit `.env`:
+     ```env
+     DB_AUTH_MODE=sql
+     DB_USER=your_sql_username
+     DB_PASSWORD=your_sql_password
+     ```
 
 ### Problem: Cannot connect to SQL Server
 
@@ -504,10 +481,9 @@ app.use(cors({
 - [ ] Node.js installed on CRSERV
 - [ ] Backend project created (`warehouse-api` directory)
 - [ ] Dependencies installed (`npm install`)
-- [ ] `.env` file created with database credentials
+- [ ] `.env` file created with correct authentication mode
 - [ ] `server.js` copied from template
-- [ ] SQL Server database created
-- [ ] All tables created in database
+- [ ] SQL Server database exists (or imported from CSV)
 - [ ] TCP/IP enabled in SQL Server
 - [ ] Windows Firewall rule added
 - [ ] API server started and tested

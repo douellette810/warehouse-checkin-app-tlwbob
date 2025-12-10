@@ -21,7 +21,7 @@
  * 
  * Example: const API_BASE_URL = 'http://192.168.1.100:3000';
  */
-const API_BASE_URL = 'http://192.168.1.100:3000'; // TODO: Update with your server IP
+const API_BASE_URL = 'http://192.168.40.239:3000'; // TODO: Update with your server IP
 
 // ============================================================================
 // TYPES
