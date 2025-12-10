@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
@@ -25,6 +26,10 @@ export default function HomeScreen() {
 
   const handleAdminPress = () => {
     setShowAdminLogin(true);
+  };
+
+  const handleExportPress = () => {
+    router.push('/(tabs)/export-csv');
   };
 
   const handleAdminLogin = () => {
@@ -46,7 +51,10 @@ export default function HomeScreen() {
         <Text style={styles.headerSubtitle}>Select an option to continue</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+      >
         <TouchableOpacity style={styles.optionCard} onPress={handleCheckInPress}>
           <View style={styles.iconContainer}>
             <IconSymbol
@@ -76,7 +84,22 @@ export default function HomeScreen() {
             Manage data and view check-ins
           </Text>
         </TouchableOpacity>
-      </View>
+
+        <TouchableOpacity style={styles.optionCard} onPress={handleExportPress}>
+          <View style={styles.iconContainer}>
+            <IconSymbol
+              ios_icon_name="square.and.arrow.up.fill"
+              android_material_icon_name="upload"
+              size={64}
+              color="#4CAF50"
+            />
+          </View>
+          <Text style={styles.optionTitle}>Export CSV</Text>
+          <Text style={styles.optionDescription}>
+            Export data to CSV for SQL Server
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
 
       <Modal
         visible={showAdminLogin}
@@ -158,10 +181,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     padding: 20,
-    justifyContent: 'center',
+    paddingBottom: 120,
     gap: 20,
   },
   optionCard: {

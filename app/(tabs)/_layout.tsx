@@ -12,6 +12,7 @@ export default function TabLayout() {
     >
       <Stack.Screen key="home" name="(home)" />
       <Stack.Screen key="profile" name="profile" />
+      <Stack.Screen key="export-csv" name="export-csv" />
     </Stack>
   );
 }
