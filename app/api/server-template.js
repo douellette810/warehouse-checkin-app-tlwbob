@@ -25,49 +25,23 @@ app.use(cors()); // Enable CORS for React Native app
 app.use(express.json()); // Parse JSON request bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
-// SQL Server Configuration
-const authMode = process.env.DB_AUTH_MODE || 'windows';
-
-let dbConfig;
-
-if (authMode === 'windows') {
-  // Windows Authentication
-  dbConfig = {
-    server: process.env.DB_SERVER || 'CRSERV\\SQLEXPRESS',
-    database: process.env.DB_DATABASE || 'WarehouseCheckIn',
-    options: {
-      encrypt: process.env.DB_ENCRYPT === 'true',
-      trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
-      enableArithAbort: true,
-      trustedConnection: true, // Use Windows Authentication
-    },
-    pool: {
-      max: 10,
-      min: 0,
-      idleTimeoutMillis: 30000
-    }
-  };
-  console.log('🔐 Using Windows Authentication');
-} else {
-  // SQL Server Authentication
-  dbConfig = {
-    server: process.env.DB_SERVER || 'CRSERV\\SQLEXPRESS',
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE || 'WarehouseCheckIn',
-    options: {
-      encrypt: process.env.DB_ENCRYPT === 'true',
-      trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
-      enableArithAbort: true,
-    },
-    pool: {
-      max: 10,
-      min: 0,
-      idleTimeoutMillis: 30000
-    }
-  };
-  console.log('🔐 Using SQL Server Authentication');
-}
+// SQL Server Configuration - Using SQL Authentication
+const dbConfig = {
+  server: process.env.DB_SERVER || 'CRSERV\\SQLEXPRESS',
+  user: process.env.DB_USER || 'sql',
+  password: process.env.DB_PASSWORD || 'W1@3!-j/R',
+  database: process.env.DB_DATABASE || 'WarehouseCheckIn',
+  options: {
+    encrypt: process.env.DB_ENCRYPT === 'true',
+    trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
+    enableArithAbort: true,
+  },
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000
+  }
+};
 
 // Database connection pool
 let pool = null;
@@ -78,7 +52,8 @@ async function initDatabase() {
     console.log('🔄 Connecting to SQL Server...');
     console.log(`   Server: ${dbConfig.server}`);
     console.log(`   Database: ${dbConfig.database}`);
-    console.log(`   Auth Mode: ${authMode}`);
+    console.log(`   User: ${dbConfig.user}`);
+    console.log('   Auth Mode: SQL Server Authentication');
     
     pool = await sql.connect(dbConfig);
     
@@ -91,14 +66,14 @@ async function initDatabase() {
     console.error('2. Check SQL Server Configuration Manager:');
     console.error('   - Enable TCP/IP protocol');
     console.error('   - Restart SQL Server service');
-    console.error('3. For Windows Authentication:');
-    console.error('   - Set DB_AUTH_MODE=windows in .env');
-    console.error('   - Remove or comment out DB_USER and DB_PASSWORD');
-    console.error('   - Run this server with a Windows account that has SQL Server access');
-    console.error('4. For SQL Server Authentication:');
-    console.error('   - Set DB_AUTH_MODE=sql in .env');
-    console.error('   - Provide DB_USER and DB_PASSWORD');
-    console.error('   - Enable SQL Server Authentication in SQL Server');
+    console.error('3. Verify SQL Server Authentication is enabled:');
+    console.error('   - Open SQL Server Management Studio');
+    console.error('   - Right-click server > Properties > Security');
+    console.error('   - Select "SQL Server and Windows Authentication mode"');
+    console.error('   - Restart SQL Server service');
+    console.error('4. Verify the SQL user has proper permissions:');
+    console.error('   - User should have db_datareader and db_datawriter roles');
+    console.error('   - Check user mapping in SQL Server Management Studio');
     console.error('');
     process.exit(1);
   }
@@ -124,7 +99,7 @@ app.get('/health', (req, res) => {
     message: 'Warehouse API is running',
     timestamp: new Date().toISOString(),
     database: pool ? 'connected' : 'disconnected',
-    authMode: authMode
+    authMode: 'SQL Server Authentication'
   });
 });
 
@@ -819,7 +794,7 @@ initDatabase().then(() => {
     console.log('═══════════════════════════════════════════════════════════');
     console.log(`  ✅ Server running on: http://localhost:${PORT}`);
     console.log(`  ✅ Network access: http://<your-ip>:${PORT}`);
-    console.log(`  🔐 Authentication: ${authMode}`);
+    console.log('  🔐 Authentication: SQL Server Authentication');
     console.log('');
     console.log('  Available endpoints:');
     console.log(`     GET  /health                    - Health check`);
