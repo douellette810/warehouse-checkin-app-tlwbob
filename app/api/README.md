@@ -47,7 +47,7 @@ npm install --save-dev nodemon
 ### 3. Copy Template Files
 
 Copy these files from this directory to your new `warehouse-api` directory:
-- `server-template.js` → rename to `server.js`
+- `server-template.txt` → rename to `server.js`
 - `.env.template` → rename to `.env` and fill in your credentials
 - `package.json.template` → rename to `package.json`
 
@@ -55,22 +55,10 @@ Copy these files from this directory to your new `warehouse-api` directory:
 
 Edit the `.env` file with your SQL Server credentials:
 
-**For Windows Authentication (Recommended):**
 ```env
 DB_SERVER=CRSERV\\SQLEXPRESS
-DB_AUTH_MODE=windows
-DB_DATABASE=WarehouseCheckIn
-DB_ENCRYPT=false
-DB_TRUST_SERVER_CERTIFICATE=true
-PORT=3000
-```
-
-**For SQL Server Authentication:**
-```env
-DB_SERVER=CRSERV\\SQLEXPRESS
-DB_AUTH_MODE=sql
-DB_USER=your_username
-DB_PASSWORD=your_password
+DB_USER=sql
+DB_PASSWORD=W1@3!-j/R
 DB_DATABASE=WarehouseCheckIn
 DB_ENCRYPT=false
 DB_TRUST_SERVER_CERTIFICATE=true
@@ -97,19 +85,19 @@ netsh advfirewall firewall add rule name="Warehouse API" dir=in action=allow pro
 ipconfig
 ```
 
-Look for the IPv4 Address (e.g., `192.168.1.100`)
+Look for the IPv4 Address (e.g., `192.168.40.239`)
 
 ### 8. Update React Native App
 
 In your React Native project, edit `app/api/client.ts`:
 
 ```typescript
-const API_BASE_URL = 'http://192.168.1.100:3000'; // Replace with your server IP
+const API_BASE_URL = 'http://192.168.40.239:3000'; // Replace with your server IP
 ```
 
 ## Files in This Directory
 
-- **server-template.js** - Complete Express server template (copy to backend project)
+- **server-template.txt** - Complete Express server template (copy to backend project as server.js)
 - **.env.template** - Environment variables template (copy and configure)
 - **package.json.template** - Package configuration template (copy to backend project)
 - **client.ts** - React Native API client (THIS IS USED BY THE APP)
@@ -118,9 +106,9 @@ const API_BASE_URL = 'http://192.168.1.100:3000'; // Replace with your server IP
 
 ## Important Notes
 
-⚠️ **DO NOT import server-template.js in your React Native app!**
+⚠️ **DO NOT import server-template.txt in your React Native app!**
 
-The `server-template.js` file uses Node.js modules (express, mssql, etc.) that are not compatible with React Native. It should only be used in a separate Node.js backend project.
+The `server-template.txt` file contains Node.js server code (express, mssql, etc.) that is not compatible with React Native. It should only be used in a separate Node.js backend project.
 
 The React Native app should only use `client.ts` to make HTTP requests to the backend API.
 
@@ -128,15 +116,9 @@ The React Native app should only use `client.ts` to make HTTP requests to the ba
 
 ### "Login failed for user" Error
 
-**Solution 1: Use Windows Authentication**
-- Set `DB_AUTH_MODE=windows` in `.env`
-- Remove `DB_USER` and `DB_PASSWORD` lines
-- Run the server with a Windows account that has SQL Server access
-
-**Solution 2: Use SQL Server Authentication**
-- Set `DB_AUTH_MODE=sql` in `.env`
-- Provide valid `DB_USER` and `DB_PASSWORD`
-- Enable SQL Server Authentication in SQL Server
+- Verify SQL Server Authentication is enabled
+- Check that the SQL user has proper permissions (db_datareader and db_datawriter roles)
+- Ensure the credentials in `.env` are correct
 
 ### Cannot Access API from Mobile Device
 
@@ -149,8 +131,8 @@ The React Native app should only use `client.ts` to make HTTP requests to the ba
 
 If you see errors like "Unable to resolve module express":
 - This means the React Native bundler is trying to include backend files
-- Make sure `metro.config.js` has the correct `blockList` configuration
 - The backend files should be in a separate project directory
+- Make sure you've copied `server-template.txt` to your backend project
 
 ## Full Documentation
 
