@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -50,19 +50,7 @@ export default function ProfileScreen() {
   const [processorSeries, setProcessorSeries] = useState('');
   const [processorGeneration, setProcessorGeneration] = useState('');
 
-  useEffect(() => {
-    loadAllData();
-  }, []);
-
-  const loadAllData = async () => {
-    const sections: AdminSection[] = ['employees', 'companies', 'categories', 'value-scrap', 'charge-materials', 'i-series', 'check-ins'];
-    
-    for (const section of sections) {
-      await loadDataForSection(section);
-    }
-  };
-
-  const loadDataForSection = async (section: AdminSection) => {
+  const loadDataForSection = useCallback(async (section: AdminSection) => {
     try {
       let tableName = '';
       switch (section) {
@@ -103,7 +91,19 @@ export default function ProfileScreen() {
     } catch (error) {
       console.log('Error loading data:', error);
     }
-  };
+  }, []);
+
+  const loadAllData = useCallback(async () => {
+    const sections: AdminSection[] = ['employees', 'companies', 'categories', 'value-scrap', 'charge-materials', 'i-series', 'check-ins'];
+    
+    for (const section of sections) {
+      await loadDataForSection(section);
+    }
+  }, [loadDataForSection]);
+
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
 
   const handleAdd = async (section: AdminSection) => {
     setLoading(true);
