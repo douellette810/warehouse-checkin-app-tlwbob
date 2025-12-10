@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
-import { localDb } from '@/app/integrations/local-db/client';
+import { supabase } from '@/utils/supabase';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -64,34 +64,42 @@ export default function ProfileScreen() {
 
   const loadDataForSection = async (section: AdminSection) => {
     try {
-      let result: any[] = [];
-      
+      let tableName = '';
       switch (section) {
         case 'employees':
-          result = await localDb.employees.getAll();
+          tableName = 'employees';
           break;
         case 'companies':
-          result = await localDb.companies.getAll();
+          tableName = 'companies';
           break;
         case 'categories':
-          result = await localDb.categories.getAll();
+          tableName = 'categories';
           break;
         case 'value-scrap':
-          result = await localDb.valueScrap.getAll();
+          tableName = 'value_scrap';
           break;
         case 'charge-materials':
-          result = await localDb.chargeMaterials.getAll();
+          tableName = 'charge_materials';
           break;
         case 'i-series':
-          result = await localDb.iSeries.getAll();
+          tableName = 'i_series';
           break;
         case 'check-ins':
-          result = await localDb.checkIns.getAll();
+          tableName = 'check_ins';
           break;
       }
 
-      console.log(`Loaded ${result?.length || 0} items from ${section}`);
-      setData(prev => ({ ...prev, [section]: result || [] }));
+      const { data: result, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.log('Error loading data:', error);
+      } else {
+        console.log(`Loaded ${result?.length || 0} items from ${tableName}`);
+        setData(prev => ({ ...prev, [section]: result || [] }));
+      }
     } catch (error) {
       console.log('Error loading data:', error);
     }
@@ -100,37 +108,53 @@ export default function ProfileScreen() {
   const handleAdd = async (section: AdminSection) => {
     setLoading(true);
     try {
+      let tableName = '';
+      let insertData: any = {};
+
       switch (section) {
         case 'employees':
-          await localDb.employees.add(employeeName);
+          tableName = 'employees';
+          insertData = { name: employeeName };
           break;
         case 'companies':
-          await localDb.companies.add({
+          tableName = 'companies';
+          insertData = {
             name: companyName,
             address: companyAddress,
             contact_person: companyContact,
             email: companyEmail,
             phone: companyPhone,
-          });
+          };
           break;
         case 'categories':
-          await localDb.categories.add(categoryName);
+          tableName = 'categories';
+          insertData = { name: categoryName };
           break;
         case 'value-scrap':
-          await localDb.valueScrap.add({ name: materialName, measurement: materialMeasurement });
+          tableName = 'value_scrap';
+          insertData = { name: materialName, measurement: materialMeasurement };
           break;
         case 'charge-materials':
-          await localDb.chargeMaterials.add({ name: materialName, measurement: materialMeasurement });
+          tableName = 'charge_materials';
+          insertData = { name: materialName, measurement: materialMeasurement };
           break;
         case 'i-series':
-          await localDb.iSeries.add({ processor_series: processorSeries, processor_generation: processorGeneration });
+          tableName = 'i_series';
+          insertData = { processor_series: processorSeries, processor_generation: processorGeneration };
           break;
       }
 
-      Alert.alert('Success', 'Item added successfully!');
-      resetForm();
-      setShowAddModal(false);
-      loadDataForSection(section);
+      const { error } = await supabase.from(tableName).insert(insertData);
+
+      if (error) {
+        console.log('Error adding data:', error);
+        Alert.alert('Error', 'Failed to add item. Please try again.');
+      } else {
+        Alert.alert('Success', 'Item added successfully!');
+        resetForm();
+        setShowAddModal(false);
+        loadDataForSection(section);
+      }
     } catch (error) {
       console.log('Error adding data:', error);
       Alert.alert('Error', 'Failed to add item. Please try again.');
@@ -144,38 +168,57 @@ export default function ProfileScreen() {
     
     setLoading(true);
     try {
+      let tableName = '';
+      let updateData: any = {};
+
       switch (section) {
         case 'employees':
-          await localDb.employees.update(editingItem.id, employeeName);
+          tableName = 'employees';
+          updateData = { name: employeeName };
           break;
         case 'companies':
-          await localDb.companies.update(editingItem.id, {
+          tableName = 'companies';
+          updateData = {
             name: companyName,
             address: companyAddress,
             contact_person: companyContact,
             email: companyEmail,
             phone: companyPhone,
-          });
+          };
           break;
         case 'categories':
-          await localDb.categories.update(editingItem.id, categoryName);
+          tableName = 'categories';
+          updateData = { name: categoryName };
           break;
         case 'value-scrap':
-          await localDb.valueScrap.update(editingItem.id, { name: materialName, measurement: materialMeasurement });
+          tableName = 'value_scrap';
+          updateData = { name: materialName, measurement: materialMeasurement };
           break;
         case 'charge-materials':
-          await localDb.chargeMaterials.update(editingItem.id, { name: materialName, measurement: materialMeasurement });
+          tableName = 'charge_materials';
+          updateData = { name: materialName, measurement: materialMeasurement };
           break;
         case 'i-series':
-          await localDb.iSeries.update(editingItem.id, { processor_series: processorSeries, processor_generation: processorGeneration });
+          tableName = 'i_series';
+          updateData = { processor_series: processorSeries, processor_generation: processorGeneration };
           break;
       }
 
-      Alert.alert('Success', 'Item updated successfully!');
-      resetForm();
-      setShowEditModal(false);
-      setEditingItem(null);
-      loadDataForSection(section);
+      const { error } = await supabase
+        .from(tableName)
+        .update(updateData)
+        .eq('id', editingItem.id);
+
+      if (error) {
+        console.log('Error updating data:', error);
+        Alert.alert('Error', 'Failed to update item. Please try again.');
+      } else {
+        Alert.alert('Success', 'Item updated successfully!');
+        resetForm();
+        setShowEditModal(false);
+        setEditingItem(null);
+        loadDataForSection(section);
+      }
     } catch (error) {
       console.log('Error updating data:', error);
       Alert.alert('Error', 'Failed to update item. Please try again.');
@@ -204,28 +247,36 @@ export default function ProfileScreen() {
           onPress: async () => {
             setLoading(true);
             try {
+              let tableName = '';
               switch (section) {
                 case 'employees':
-                  await localDb.employees.delete(id);
+                  tableName = 'employees';
                   break;
                 case 'companies':
-                  await localDb.companies.delete(id);
+                  tableName = 'companies';
                   break;
                 case 'categories':
-                  await localDb.categories.delete(id);
+                  tableName = 'categories';
                   break;
                 case 'value-scrap':
-                  await localDb.valueScrap.delete(id);
+                  tableName = 'value_scrap';
                   break;
                 case 'charge-materials':
-                  await localDb.chargeMaterials.delete(id);
+                  tableName = 'charge_materials';
                   break;
                 case 'i-series':
-                  await localDb.iSeries.delete(id);
+                  tableName = 'i_series';
                   break;
               }
 
-              loadDataForSection(section);
+              const { error } = await supabase.from(tableName).delete().eq('id', id);
+
+              if (error) {
+                console.log('Error deleting data:', error);
+                Alert.alert('Error', 'Failed to delete item. Please try again.');
+              } else {
+                loadDataForSection(section);
+              }
             } catch (error) {
               console.log('Error deleting data:', error);
               Alert.alert('Error', 'Failed to delete item. Please try again.');
@@ -439,7 +490,7 @@ export default function ProfileScreen() {
       } else {
         Alert.alert(
           'File Saved',
-          `Check-in report saved to:\n${fileUri}\n\nYou can find it in your device&apos;s file manager.`
+          `Check-in report saved to:\n${fileUri}\n\nYou can find it in your device's file manager.`
         );
       }
     } catch (error) {
@@ -491,7 +542,7 @@ export default function ProfileScreen() {
       } else {
         Alert.alert(
           'File Saved',
-          `All check-in reports saved to:\n${fileUri}\n\nYou can find it in your device&apos;s file manager.`
+          `All check-in reports saved to:\n${fileUri}\n\nYou can find it in your device's file manager.`
         );
       }
     } catch (error) {
@@ -1088,7 +1139,6 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Admin Panel</Text>
         <Text style={styles.headerSubtitle}>Manage/Edit Warehouse Data and View/Print Check-Ins</Text>
-        <Text style={styles.localDbBadge}>📱 Local Database</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -1221,17 +1271,6 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginBottom: 8,
-  },
-  localDbBadge: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
-    backgroundColor: colors.highlight,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
   },
   content: {
     flex: 1,
