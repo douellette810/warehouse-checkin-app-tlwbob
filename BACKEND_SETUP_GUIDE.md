@@ -7,6 +7,8 @@ This guide will walk you through setting up a backend API server to connect your
 
 **Goal:** Keep all data confined to your local network to prevent data breaches.
 
+**⚠️ IMPORTANT:** The backend API is a **SEPARATE Node.js project** that runs on your CRSERV machine. It is NOT part of the React Native app bundle.
+
 ---
 
 ## 🏗️ Architecture
@@ -59,6 +61,8 @@ This guide will walk you through setting up a backend API server to connect your
    - You should see version numbers (e.g., v20.11.0 and 10.2.4)
 
 ### Step 2: Create Backend Project Directory
+
+**⚠️ IMPORTANT:** Create this in a SEPARATE directory, NOT inside your React Native project!
 
 1. Open Command Prompt on CRSERV
 2. Navigate to where you want to create the project:
@@ -131,8 +135,16 @@ PORT=3000
 
 ### Step 5: Copy Server Template
 
-1. Copy the `server-template.js` file from `app/api/server-template.js` in your React Native project
-2. Save it as `server.js` in your `warehouse-api` directory
+1. From your React Native project, navigate to `app/api/`
+2. Copy the `server-template.js` file
+3. Paste it into your `warehouse-api` directory
+4. Rename it to `server.js`
+
+**Command line method:**
+```bash
+# From your React Native project directory
+copy app\api\server-template.js C:\warehouse-api\server.js
+```
 
 ### Step 6: Update package.json
 
@@ -257,6 +269,39 @@ You should see:
 
 ---
 
+## 🔧 Understanding the Build Error
+
+If you see this error when building your React Native app:
+
+```
+Error: Unable to resolve module express from /expo-project/app/api/server-template.js
+```
+
+**This means:**
+- The React Native bundler is trying to include the backend server template in the app bundle
+- This is incorrect - the server template should only be used in the separate backend project
+
+**Solution:**
+The `metro.config.js` file has been updated to exclude backend files from the React Native bundle:
+
+```javascript
+config.resolver.blockList = [
+  /app\/api\/server-template\.js$/,
+  /app\/api\/package\.json\.template$/,
+];
+```
+
+**What this does:**
+- Prevents Metro (React Native bundler) from including backend template files
+- The backend files remain in the project for reference but are not bundled
+- Only `app/api/client.ts` is used by the React Native app
+
+**Remember:**
+- `server-template.js` → Copy to separate backend project
+- `client.ts` → Used by React Native app to make HTTP requests
+
+---
+
 ## 🔒 Security Considerations
 
 ### Network Security
@@ -299,7 +344,7 @@ This keeps the API running even after you log out of Windows.
    npm install -g node-windows
    ```
 
-2. Create `install-service.js`:
+2. Create `install-service.js` in your `warehouse-api` directory:
    ```javascript
    const Service = require('node-windows').Service;
 
@@ -352,7 +397,7 @@ This keeps the API running even after you log out of Windows.
 
 ### Problem: "Login failed for user 'CRSERV\Administrator'"
 
-**This is the error you're experiencing!**
+**This is a common authentication error!**
 
 **Solutions:**
 
@@ -426,6 +471,20 @@ app.use(cors({
 3. Check SQL Server error logs
 4. Ensure database name is correct
 
+### Problem: "Unable to resolve module express" in React Native
+
+**This is NOT an error with your React Native app!**
+
+**Explanation:**
+- This error appears when the React Native bundler tries to include backend files
+- The backend files should be in a separate project directory
+- The `metro.config.js` has been updated to exclude these files
+
+**Solution:**
+- Make sure you've copied `server-template.js` to a separate `warehouse-api` directory
+- The React Native app should only use `app/api/client.ts`
+- Restart the Expo dev server after updating `metro.config.js`
+
 ---
 
 ## 📊 API Endpoints Reference
@@ -479,18 +538,42 @@ app.use(cors({
 ## ✅ Checklist
 
 - [ ] Node.js installed on CRSERV
-- [ ] Backend project created (`warehouse-api` directory)
-- [ ] Dependencies installed (`npm install`)
+- [ ] Backend project created in SEPARATE directory (`C:\warehouse-api`)
+- [ ] Dependencies installed in backend project (`npm install`)
 - [ ] `.env` file created with correct authentication mode
-- [ ] `server.js` copied from template
+- [ ] `server.js` copied from template to backend project
 - [ ] SQL Server database exists (or imported from CSV)
 - [ ] TCP/IP enabled in SQL Server
 - [ ] Windows Firewall rule added
 - [ ] API server started and tested
 - [ ] Server IP address identified
-- [ ] React Native app updated with server IP
+- [ ] React Native app updated with server IP in `app/api/client.ts`
+- [ ] Metro config updated to exclude backend files
 - [ ] End-to-end test successful
 - [ ] (Optional) Windows Service configured for production
+
+---
+
+## 📁 Project Structure
+
+```
+Your Computer/
+├── expo-project/                    # React Native App
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── client.ts           # ✅ Used by React Native app
+│   │   │   ├── server-template.js  # ⚠️ Template only - copy to backend
+│   │   │   └── README.md
+│   │   └── ...
+│   └── metro.config.js             # Excludes backend files
+│
+CRSERV Machine/
+└── warehouse-api/                   # Backend API Server (SEPARATE)
+    ├── server.js                    # Copied from server-template.js
+    ├── .env                         # Database credentials
+    ├── package.json
+    └── node_modules/
+```
 
 ---
 
@@ -503,6 +586,7 @@ If you encounter issues:
 3. Test API endpoints with a browser or Postman
 4. Check network connectivity between devices
 5. Review Windows Firewall and SQL Server logs
+6. Ensure backend files are in a separate directory
 
 ---
 

@@ -9,4 +9,10 @@ config.cacheStores = [
     new FileStore({ root: path.join(__dirname, 'node_modules', '.cache', 'metro') }),
   ];
 
+// Exclude backend API files from the React Native bundle
+config.resolver.blockList = [
+  /app\/api\/server-template\.js$/,
+  /app\/api\/package\.json\.template$/,
+];
+
 module.exports = config;
