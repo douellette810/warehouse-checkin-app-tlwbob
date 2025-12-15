@@ -5,6 +5,319 @@ This guide will help you set up user authentication for the Warehouse Check-In a
 
 ## Database Setup
 
+### IMPORTANT: Foreign Key Constraint Error Fix
+
+If you're getting the error **"Foreign key 'FK_users_employee_id' references invalid table 'dbo.employees'"**, follow these steps:
+
+#### Step 1: Verify employees table has a PRIMARY KEY
+
+The most common cause is that the `employees` table doesn't have a primary key defined on the `id` column. Run this query to check:
+
+```sql
+-- Check if employees table has a primary key
+SELECT 
+    tc.CONSTRAINT_NAME,
+    tc.CONSTRAINT_TYPE,
+    kcu.COLUMN_NAME
+FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
+    ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+WHERE tc.TABLE_NAME = 'employees' 
+    AND tc.TABLE_SCHEMA = 'dbo'
+    AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY';
+```
+
+**If this returns no results**, the `id` column is not a primary key. Fix it with:
+
+```sql
+-- Add primary key to employees table
+ALTER TABLE dbo.employees
+ADD CONSTRAINT PK_employees PRIMARY KEY (id);
+```
+
+#### Step 2: Verify the id column data type matches
+
+Both columns must have the exact same data type. Check with:
+
+```sql
+-- Check data types
+SELECT 
+    'employees' AS TableName,
+    c.name AS ColumnName,
+    t.name AS DataType,
+    c.max_length,
+    c.is_nullable
+FROM sys.columns c
+INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+WHERE c.object_id = OBJECT_ID('dbo.employees') AND c.name = 'id'
+
+UNION ALL
+
+SELECT 
+    'users' AS TableName,
+    c.name AS ColumnName,
+    t.name AS DataType,
+    c.max_length,
+    c.is_nullable
+FROM sys.columns c
+INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+WHERE c.object_id = OBJECT_ID('dbo.users') AND c.name = 'employee_id';
+```
+
+Both should show `uniqueidentifier` as the data type.
+
+#### Step 3: Drop existing foreign key constraint (if it exists)
+
+If you've tried to create the constraint multiple times, you might have a broken constraint:
+
+```sql
+-- Find and drop any existing foreign key constraints on users.employee_id
+DECLARE @ConstraintName NVARCHAR(200);
+DECLARE @SQL NVARCHAR(MAX);
+
+SELECT @ConstraintName = name 
+FROM sys.foreign_keys 
+WHERE parent_object_id = OBJECT_ID('dbo.users')
+    AND parent_column_id = (
+        SELECT column_id 
+        FROM sys.columns 
+        WHERE object_id = OBJECT_ID('dbo.users') 
+        AND name = 'employee_id'
+    );
+
+IF @ConstraintName IS NOT NULL
+BEGIN
+    SET @SQL = 'ALTER TABLE dbo.users DROP CONSTRAINT ' + @ConstraintName;
+    PRINT 'Dropping constraint: ' + @ConstraintName;
+    EXEC sp_executesql @SQL;
+    PRINT 'Constraint dropped successfully';
+END
+ELSE
+BEGIN
+    PRINT 'No existing constraint found';
+END
+```
+
+#### Step 4: Create the foreign key constraint with explicit database reference
+
+Try creating the constraint with the full database path:
+
+```sql
+-- Create foreign key with explicit database reference
+ALTER TABLE dbo.users
+ADD CONSTRAINT FK_users_employee_id 
+FOREIGN KEY (employee_id) 
+REFERENCES dbo.employees(id) 
+ON DELETE SET NULL;
+```
+
+#### Step 5: Alternative - Use sp_fkeys to verify
+
+You can also use the system stored procedure to check foreign keys:
+
+```sql
+-- Check existing foreign keys
+EXEC sp_fkeys @pktable_name = 'employees', @pktable_owner = 'dbo';
+```
+
+### COMPLETE SOLUTION: Run This Script
+
+If you're still having issues, run this complete script that handles everything:
+
+```sql
+-- ============================================================================
+-- COMPLETE FOREIGN KEY FIX SCRIPT
+-- ============================================================================
+
+USE WarehouseCheckIn;
+GO
+
+PRINT '========================================';
+PRINT 'Step 1: Verify employees table exists';
+PRINT '========================================';
+
+IF OBJECT_ID('dbo.employees', 'U') IS NULL
+BEGIN
+    PRINT 'ERROR: employees table does not exist!';
+    PRINT 'Please create the employees table first.';
+END
+ELSE
+BEGIN
+    PRINT 'SUCCESS: employees table exists';
+    
+    -- Show employees table structure
+    SELECT 
+        c.name AS ColumnName,
+        t.name AS DataType,
+        c.max_length,
+        c.is_nullable,
+        c.is_identity
+    FROM sys.columns c
+    INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+    WHERE c.object_id = OBJECT_ID('dbo.employees');
+END
+GO
+
+PRINT '';
+PRINT '========================================';
+PRINT 'Step 2: Check for PRIMARY KEY on employees.id';
+PRINT '========================================';
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+    JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
+        ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+    WHERE tc.TABLE_NAME = 'employees' 
+        AND tc.TABLE_SCHEMA = 'dbo'
+        AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+        AND kcu.COLUMN_NAME = 'id'
+)
+BEGIN
+    PRINT 'WARNING: No PRIMARY KEY found on employees.id';
+    PRINT 'Adding PRIMARY KEY constraint...';
+    
+    ALTER TABLE dbo.employees
+    ADD CONSTRAINT PK_employees PRIMARY KEY (id);
+    
+    PRINT 'SUCCESS: PRIMARY KEY added to employees.id';
+END
+ELSE
+BEGIN
+    PRINT 'SUCCESS: PRIMARY KEY exists on employees.id';
+END
+GO
+
+PRINT '';
+PRINT '========================================';
+PRINT 'Step 3: Verify users table exists';
+PRINT '========================================';
+
+IF OBJECT_ID('dbo.users', 'U') IS NULL
+BEGIN
+    PRINT 'ERROR: users table does not exist!';
+    PRINT 'Please create the users table first.';
+END
+ELSE
+BEGIN
+    PRINT 'SUCCESS: users table exists';
+    
+    -- Show users table structure
+    SELECT 
+        c.name AS ColumnName,
+        t.name AS DataType,
+        c.max_length,
+        c.is_nullable
+    FROM sys.columns c
+    INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+    WHERE c.object_id = OBJECT_ID('dbo.users');
+END
+GO
+
+PRINT '';
+PRINT '========================================';
+PRINT 'Step 4: Drop existing foreign key (if exists)';
+PRINT '========================================';
+
+DECLARE @ConstraintName NVARCHAR(200);
+DECLARE @SQL NVARCHAR(MAX);
+
+SELECT @ConstraintName = name 
+FROM sys.foreign_keys 
+WHERE parent_object_id = OBJECT_ID('dbo.users')
+    AND parent_column_id = (
+        SELECT column_id 
+        FROM sys.columns 
+        WHERE object_id = OBJECT_ID('dbo.users') 
+        AND name = 'employee_id'
+    );
+
+IF @ConstraintName IS NOT NULL
+BEGIN
+    SET @SQL = 'ALTER TABLE dbo.users DROP CONSTRAINT ' + @ConstraintName;
+    PRINT 'Dropping existing constraint: ' + @ConstraintName;
+    EXEC sp_executesql @SQL;
+    PRINT 'SUCCESS: Constraint dropped';
+END
+ELSE
+BEGIN
+    PRINT 'No existing constraint found (this is OK)';
+END
+GO
+
+PRINT '';
+PRINT '========================================';
+PRINT 'Step 5: Verify data types match';
+PRINT '========================================';
+
+SELECT 
+    'employees.id' AS Column_Reference,
+    t.name AS DataType,
+    c.max_length,
+    c.is_nullable
+FROM sys.columns c
+INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+WHERE c.object_id = OBJECT_ID('dbo.employees') AND c.name = 'id'
+
+UNION ALL
+
+SELECT 
+    'users.employee_id' AS Column_Reference,
+    t.name AS DataType,
+    c.max_length,
+    c.is_nullable
+FROM sys.columns c
+INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+WHERE c.object_id = OBJECT_ID('dbo.users') AND c.name = 'employee_id';
+GO
+
+PRINT '';
+PRINT '========================================';
+PRINT 'Step 6: Create foreign key constraint';
+PRINT '========================================';
+
+BEGIN TRY
+    ALTER TABLE dbo.users
+    ADD CONSTRAINT FK_users_employee_id 
+    FOREIGN KEY (employee_id) 
+    REFERENCES dbo.employees(id) 
+    ON DELETE SET NULL;
+    
+    PRINT 'SUCCESS: Foreign key constraint created!';
+END TRY
+BEGIN CATCH
+    PRINT 'ERROR: Failed to create foreign key constraint';
+    PRINT 'Error Message: ' + ERROR_MESSAGE();
+    PRINT 'Error Number: ' + CAST(ERROR_NUMBER() AS NVARCHAR(10));
+    PRINT 'Error Line: ' + CAST(ERROR_LINE() AS NVARCHAR(10));
+END CATCH
+GO
+
+PRINT '';
+PRINT '========================================';
+PRINT 'Step 7: Verify foreign key was created';
+PRINT '========================================';
+
+SELECT 
+    fk.name AS ForeignKeyName,
+    OBJECT_NAME(fk.parent_object_id) AS TableName,
+    COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName,
+    OBJECT_NAME(fk.referenced_object_id) AS ReferencedTable,
+    COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) AS ReferencedColumn,
+    fk.delete_referential_action_desc AS DeleteAction
+FROM sys.foreign_keys fk
+INNER JOIN sys.foreign_key_columns fkc 
+    ON fk.object_id = fkc.constraint_object_id
+WHERE fk.parent_object_id = OBJECT_ID('dbo.users')
+    AND COL_NAME(fkc.parent_object_id, fkc.parent_column_id) = 'employee_id';
+GO
+
+PRINT '';
+PRINT '========================================';
+PRINT 'COMPLETE! Foreign key setup finished.';
+PRINT '========================================';
+```
+
 ### IMPORTANT: Check for Existing Users Table First
 
 Before creating the users table, check if it already exists:
@@ -158,7 +471,7 @@ SELECT * FROM dbo.users;
 Run the following SQL script in SQL Server Management Studio to create the users table:
 
 ```sql
--- Create users table
+-- Create users table WITHOUT foreign key first
 CREATE TABLE dbo.users (
     id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     name NVARCHAR(255) NOT NULL,
@@ -170,11 +483,6 @@ CREATE TABLE dbo.users (
 
 -- Create index on email for faster lookups
 CREATE INDEX idx_users_email ON dbo.users(email);
-
--- Add foreign key constraint with explicit schema reference
-ALTER TABLE dbo.users
-ADD CONSTRAINT FK_users_employee_id 
-FOREIGN KEY (employee_id) REFERENCES dbo.employees(id) ON DELETE SET NULL;
 
 -- Insert the two initial users
 -- Password for both: W1@3!-j/R
@@ -189,81 +497,7 @@ INSERT INTO dbo.users (name, email, password_hash) VALUES
 SELECT * FROM dbo.users;
 ```
 
-### Alternative: Create Without Foreign Key First
-
-If you still encounter issues, you can create the table without the foreign key first, then add it separately:
-
-```sql
--- Step 1: Create users table without foreign key
-CREATE TABLE dbo.users (
-    id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    name NVARCHAR(255) NOT NULL,
-    email NVARCHAR(255) NOT NULL UNIQUE,
-    password_hash NVARCHAR(255) NOT NULL,
-    employee_id UNIQUEIDENTIFIER NULL,
-    created_at DATETIME DEFAULT GETDATE()
-);
-
--- Step 2: Create index on email for faster lookups
-CREATE INDEX idx_users_email ON dbo.users(email);
-
--- Step 3: Insert the two initial users
-INSERT INTO dbo.users (name, email, password_hash) VALUES 
-('Dan', 'dan@circuitry.solutions', 'W1@3!-j/R'),
-('Mike', 'mike@circuitry.solutions', 'W1@3!-j/R');
-
--- Step 4: Verify employees table exists and has data
-SELECT * FROM dbo.employees;
-
--- Step 5: Add foreign key constraint (only after verifying employees table exists)
-ALTER TABLE dbo.users
-ADD CONSTRAINT FK_users_employee_id 
-FOREIGN KEY (employee_id) REFERENCES dbo.employees(id) ON DELETE SET NULL;
-
--- Step 6: Verify the users were created
-SELECT * FROM dbo.users;
-```
-
-### Troubleshooting Foreign Key Issues
-
-If you're still getting the "references invalid table" error, try these steps:
-
-1. **Verify the employees table exists in the dbo schema:**
-   ```sql
-   SELECT TABLE_SCHEMA, TABLE_NAME 
-   FROM INFORMATION_SCHEMA.TABLES 
-   WHERE TABLE_NAME = 'employees';
-   ```
-
-2. **Check if the employees table has an 'id' column:**
-   ```sql
-   SELECT COLUMN_NAME, DATA_TYPE 
-   FROM INFORMATION_SCHEMA.COLUMNS 
-   WHERE TABLE_NAME = 'employees' AND TABLE_SCHEMA = 'dbo';
-   ```
-
-3. **Verify the 'id' column in employees is a primary key:**
-   ```sql
-   SELECT CONSTRAINT_NAME, CONSTRAINT_TYPE 
-   FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
-   WHERE TABLE_NAME = 'employees' AND TABLE_SCHEMA = 'dbo';
-   ```
-
-4. **If the foreign key constraint already exists and is causing issues, drop it first:**
-   ```sql
-   -- Find the constraint name
-   SELECT name 
-   FROM sys.foreign_keys 
-   WHERE parent_object_id = OBJECT_ID('dbo.users');
-   
-   -- Drop the constraint (replace with actual constraint name)
-   ALTER TABLE dbo.users DROP CONSTRAINT FK__users__employee___52793849;
-   
-   -- Then recreate it with the correct reference
-   ALTER TABLE dbo.users
-   ADD CONSTRAINT FK_users_employee_id 
-   FOREIGN KEY (employee_id) REFERENCES dbo.employees(id) ON DELETE SET NULL;
-   ```
+**THEN**, after the users table is created, run the **COMPLETE FOREIGN KEY FIX SCRIPT** above to add the foreign key constraint.
 
 ### 2. Update Server Code
 
@@ -530,8 +764,27 @@ In a production environment, you should:
 
 ## Troubleshooting
 
+### Foreign Key Constraint Error: "references invalid table 'dbo.employees'"
+
+**This is the most common error!** Follow these steps in order:
+
+1. **Run the COMPLETE FOREIGN KEY FIX SCRIPT** at the top of this document
+2. The script will automatically:
+   - Verify both tables exist
+   - Check for and add PRIMARY KEY on employees.id if missing
+   - Drop any broken foreign key constraints
+   - Verify data types match
+   - Create the foreign key constraint
+   - Verify the constraint was created successfully
+
+3. **If the script still fails**, check these manually:
+   - Ensure `employees.id` is a PRIMARY KEY (not just a regular column)
+   - Ensure both `employees.id` and `users.employee_id` are `uniqueidentifier` type
+   - Ensure you're running the script in the correct database (WarehouseCheckIn)
+   - Ensure your SQL user has ALTER permissions on both tables
+
 ### "There is already an object named 'users' in the database" Error
-- Follow the **"If Table Already Exists - Resolution Steps"** section at the top of this document
+- Follow the **"If Table Already Exists - Resolution Steps"** section
 - Use the provided SQL queries to locate and inspect the existing table
 - Either drop and recreate the table, or use the existing table structure
 
@@ -549,12 +802,6 @@ In a production environment, you should:
 - Ensure the employee_id foreign key constraint is set up correctly
 - Verify the employee exists in the employees table
 - Check server logs for any errors
-
-### Foreign key constraint error
-- Ensure the employees table exists in the dbo schema
-- Verify the employees table has an 'id' column that is a primary key
-- Use the troubleshooting queries above to diagnose the issue
-- Try creating the table without the foreign key first, then adding it separately
 
 ### Table not visible in SSMS but exists
 - Right-click on Tables folder and select Refresh
