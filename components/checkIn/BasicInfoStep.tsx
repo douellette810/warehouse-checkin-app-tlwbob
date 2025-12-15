@@ -7,15 +7,21 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
+  Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/styles/commonStyles';
 import { Employee, Company, CheckInFormData } from '@/types/checkIn';
+import api from '@/app/api/client';
+
+const STORAGE_KEY_USER = '@warehouse_current_user';
 
 interface BasicInfoStepProps {
   formData: CheckInFormData;
   updateFormData: (updates: Partial<CheckInFormData>) => void;
   employees: Employee[];
   companies: Company[];
+  currentUser?: any;
   onNext: () => void;
 }
 
@@ -24,6 +30,7 @@ export default function BasicInfoStep({
   updateFormData,
   employees,
   companies,
+  currentUser,
   onNext,
 }: BasicInfoStepProps) {
   const [showEmployeePicker, setShowEmployeePicker] = useState(false);
@@ -35,9 +42,45 @@ export default function BasicInfoStep({
     '4.5', '5.0', '5.5', '6.0', '6.5', '7.0', '7.5', '8.0',
   ];
 
-  const handleEmployeeSelect = (employee: Employee) => {
+  const handleEmployeeSelect = async (employee: Employee) => {
     updateFormData({ employeeName: employee.name });
     setShowEmployeePicker(false);
+
+    // Ask if user wants to save this as their preference
+    if (currentUser && currentUser.employee_id !== employee.id) {
+      Alert.alert(
+        'Save Preference',
+        `Would you like to save "${employee.name}" as your default employee for future check-ins?`,
+        [
+          { text: 'No', style: 'cancel' },
+          {
+            text: 'Yes',
+            onPress: async () => {
+              try {
+                console.log('Saving employee preference:', employee.id);
+                const response = await api.auth.updateEmployeePreference(
+                  currentUser.id,
+                  employee.id
+                );
+
+                if (response.success && response.data) {
+                  // Update stored user data
+                  await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(response.data));
+                  console.log('Employee preference saved successfully');
+                  Alert.alert('Success', 'Your employee preference has been saved!');
+                } else {
+                  console.error('Failed to save preference:', response.error);
+                  Alert.alert('Error', 'Failed to save preference. Please try again.');
+                }
+              } catch (error) {
+                console.error('Error saving preference:', error);
+                Alert.alert('Error', 'Failed to save preference. Please try again.');
+              }
+            },
+          },
+        ]
+      );
+    }
   };
 
   const handleCompanySelect = (company: Company) => {

@@ -35,6 +35,14 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  employee_id: string | null;
+  created_at: string;
+}
+
 export interface Employee {
   id: string;
   name: string;
@@ -149,6 +157,40 @@ async function apiRequest<T>(
 
 export const healthCheck = async (): Promise<ApiResponse<any>> => {
   return apiRequest('/health');
+};
+
+// ============================================================================
+// AUTHENTICATION API
+// ============================================================================
+
+export const authApi = {
+  login: async (email: string, password: string): Promise<ApiResponse<User>> => {
+    return apiRequest('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  },
+
+  changePassword: async (
+    userId: string,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<ApiResponse<void>> => {
+    return apiRequest('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ userId, currentPassword, newPassword }),
+    });
+  },
+
+  updateEmployeePreference: async (
+    userId: string,
+    employeeId: string | null
+  ): Promise<ApiResponse<User>> => {
+    return apiRequest('/api/auth/update-employee-preference', {
+      method: 'POST',
+      body: JSON.stringify({ userId, employeeId }),
+    });
+  },
 };
 
 // ============================================================================
@@ -376,6 +418,7 @@ export const checkInsApi = {
 
 export default {
   healthCheck,
+  auth: authApi,
   employees: employeesApi,
   companies: companiesApi,
   categories: categoriesApi,

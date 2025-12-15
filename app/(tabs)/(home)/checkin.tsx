@@ -8,8 +8,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles/commonStyles';
 import api from '@/app/api/client';
@@ -23,11 +25,15 @@ import AdditionalNotesStep from '@/components/checkIn/AdditionalNotesStep';
 import ReviewStep from '@/components/checkIn/ReviewStep';
 import { IconSymbol } from '@/components/IconSymbol';
 
+const STORAGE_KEY_USER = '@warehouse_current_user';
+
 export default function CheckInScreen() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<FormStep>('basic-info');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -60,13 +66,48 @@ export default function CheckInScreen() {
   });
 
   useEffect(() => {
-    loadData();
-    // Record the start time when the form is first loaded
-    setFormData(prev => ({
-      ...prev,
-      startedAt: new Date().toISOString(),
-    }));
+    checkAuthentication();
   }, []);
+
+  const checkAuthentication = async () => {
+    try {
+      const userJson = await AsyncStorage.getItem(STORAGE_KEY_USER);
+      if (!userJson) {
+        Alert.alert('Not Logged In', 'Please log in to continue');
+        router.replace('/(tabs)/(home)/login');
+        return;
+      }
+
+      const user = JSON.parse(userJson);
+      setCurrentUser(user);
+      console.log('Current user:', user.name);
+
+      // Load data after authentication
+      await loadData();
+
+      // Auto-fill employee name if user has a preference
+      if (user.employee_id) {
+        const employee = employees.find(e => e.id === user.employee_id);
+        if (employee) {
+          setFormData(prev => ({
+            ...prev,
+            employeeName: employee.name,
+          }));
+          console.log('Auto-filled employee:', employee.name);
+        }
+      }
+
+      // Record the start time when the form is first loaded
+      setFormData(prev => ({
+        ...prev,
+        startedAt: new Date().toISOString(),
+      }));
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      Alert.alert('Error', 'Failed to verify authentication');
+      router.replace('/(tabs)/(home)/login');
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -180,12 +221,69 @@ export default function CheckInScreen() {
     setCurrentStep(step);
   };
 
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem(STORAGE_KEY_USER);
+              console.log('User logged out');
+              router.replace('/(tabs)/(home)');
+            } catch (error) {
+              console.error('Error logging out:', error);
+              Alert.alert('Error', 'Failed to logout');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleChangePassword = () => {
+    setShowUserMenu(false);
+    router.push('/(tabs)/(home)/change-password');
+  };
+
+  const handleSetEmployeePreference = async () => {
+    if (!currentUser) return;
+
+    Alert.alert(
+      'Set Employee Preference',
+      'Would you like to set your employee entry for auto-fill?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Choose Employee',
+          onPress: () => {
+            setShowUserMenu(false);
+            // This will be handled in BasicInfoStep
+            Alert.alert(
+              'Employee Preference',
+              'Select your employee name in the form, then it will be saved for future check-ins.'
+            );
+          },
+        },
+      ]
+    );
+  };
+
   const resetFormToBeginning = () => {
     console.log('Resetting form to beginning...');
     
+    // Get the employee name to preserve if user has preference
+    const employeeName = currentUser?.employee_id 
+      ? employees.find(e => e.id === currentUser.employee_id)?.name || ''
+      : '';
+    
     // Reset form data with a new start time
     setFormData({
-      employeeName: '',
+      employeeName: employeeName,
       startedAt: new Date().toISOString(),
       finishedAt: null,
       totalTime: '',
@@ -416,7 +514,20 @@ export default function CheckInScreen() {
           <Text style={styles.stepIndicator}>
             Step {getStepNumber()} of 7: {getStepTitle()}
           </Text>
+          {currentUser && (
+            <Text style={styles.userIndicator}>
+              Logged in as: {currentUser.name}
+            </Text>
+          )}
         </View>
+        <TouchableOpacity style={styles.userMenuButton} onPress={() => setShowUserMenu(true)}>
+          <IconSymbol
+            ios_icon_name="person.circle.fill"
+            android_material_icon_name="account_circle"
+            size={32}
+            color={colors.primary}
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -430,6 +541,7 @@ export default function CheckInScreen() {
             updateFormData={updateFormData}
             employees={employees}
             companies={companies}
+            currentUser={currentUser}
             onNext={goToNextStep}
           />
         )}
@@ -493,6 +605,79 @@ export default function CheckInScreen() {
           />
         )}
       </ScrollView>
+
+      <Modal
+        visible={showUserMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowUserMenu(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.userMenuContent}>
+            <View style={styles.userMenuHeader}>
+              <IconSymbol
+                ios_icon_name="person.circle.fill"
+                android_material_icon_name="account_circle"
+                size={48}
+                color={colors.primary}
+              />
+              <View style={styles.userMenuInfo}>
+                <Text style={styles.userMenuName}>{currentUser?.name}</Text>
+                <Text style={styles.userMenuEmail}>{currentUser?.email}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.userMenuItem} onPress={handleChangePassword}>
+              <IconSymbol
+                ios_icon_name="key.fill"
+                android_material_icon_name="vpn_key"
+                size={24}
+                color={colors.text}
+              />
+              <Text style={styles.userMenuItemText}>Change Password</Text>
+              <IconSymbol
+                ios_icon_name="chevron.right"
+                android_material_icon_name="chevron_right"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.userMenuItem} onPress={handleSetEmployeePreference}>
+              <IconSymbol
+                ios_icon_name="person.fill"
+                android_material_icon_name="person"
+                size={24}
+                color={colors.text}
+              />
+              <Text style={styles.userMenuItemText}>Set Employee Preference</Text>
+              <IconSymbol
+                ios_icon_name="chevron.right"
+                android_material_icon_name="chevron_right"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.userMenuItemDanger} onPress={handleLogout}>
+              <IconSymbol
+                ios_icon_name="arrow.right.square.fill"
+                android_material_icon_name="logout"
+                size={24}
+                color="#F44336"
+              />
+              <Text style={styles.userMenuItemTextDanger}>Logout</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.userMenuCloseButton}
+              onPress={() => setShowUserMenu(false)}
+            >
+              <Text style={styles.userMenuCloseButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -545,12 +730,22 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   stepIndicator: {
     fontSize: 14,
     color: colors.textSecondary,
     fontWeight: '500',
+    marginBottom: 2,
+  },
+  userIndicator: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  userMenuButton: {
+    marginLeft: 8,
+    padding: 4,
   },
   scrollView: {
     flex: 1,
@@ -558,5 +753,83 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 120,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  userMenuContent: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+  },
+  userMenuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  userMenuInfo: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  userMenuName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  userMenuEmail: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  userMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  userMenuItemText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 12,
+  },
+  userMenuItemDanger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  userMenuItemTextDanger: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F44336',
+    marginLeft: 12,
+  },
+  userMenuCloseButton: {
+    backgroundColor: colors.border,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  userMenuCloseButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
   },
 });
