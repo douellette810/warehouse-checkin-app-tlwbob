@@ -5,7 +5,155 @@ This guide will help you set up user authentication for the Warehouse Check-In a
 
 ## Database Setup
 
-### 1. Create Users Table
+### IMPORTANT: Check for Existing Users Table First
+
+Before creating the users table, check if it already exists:
+
+```sql
+-- Check if users table exists in any schema
+SELECT 
+    s.name AS SchemaName,
+    t.name AS TableName,
+    t.object_id AS ObjectID
+FROM sys.tables t
+INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE t.name = 'users';
+
+-- Alternative check using sys.objects
+SELECT 
+    name AS ObjectName,
+    type_desc AS ObjectType,
+    object_id AS ObjectID,
+    create_date AS CreateDate,
+    modify_date AS ModifyDate
+FROM sys.objects 
+WHERE name = 'users';
+```
+
+If the query returns results, the table exists. Proceed to the **"Table Already Exists"** section below.
+
+### If Table Already Exists - Resolution Steps
+
+If you get the error "There is already an object named 'users' in the database", follow these steps:
+
+#### Step 1: Refresh SSMS
+1. In SSMS, right-click on the **Tables** folder
+2. Select **Refresh**
+3. Check if the `users` table now appears
+
+#### Step 2: Check All Schemas
+The table might exist in a different schema:
+
+```sql
+-- List all tables named 'users' across all schemas
+SELECT 
+    SCHEMA_NAME(schema_id) AS SchemaName,
+    name AS TableName
+FROM sys.tables
+WHERE name = 'users';
+```
+
+#### Step 3: View Table Structure (If Found)
+If the table exists, check its structure:
+
+```sql
+-- View columns in the users table
+SELECT 
+    c.name AS ColumnName,
+    t.name AS DataType,
+    c.max_length AS MaxLength,
+    c.is_nullable AS IsNullable
+FROM sys.columns c
+INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+WHERE c.object_id = OBJECT_ID('dbo.users');
+
+-- View existing data
+SELECT * FROM dbo.users;
+```
+
+#### Step 4: Drop and Recreate (If Needed)
+
+**WARNING: This will delete all existing user data!**
+
+If the existing table structure is incorrect or you want to start fresh:
+
+```sql
+-- Step 4a: Drop foreign key constraints first (if they exist)
+DECLARE @ConstraintName NVARCHAR(200);
+DECLARE @SQL NVARCHAR(MAX);
+
+-- Find and drop all foreign key constraints referencing users table
+DECLARE constraint_cursor CURSOR FOR
+SELECT name 
+FROM sys.foreign_keys 
+WHERE referenced_object_id = OBJECT_ID('dbo.users');
+
+OPEN constraint_cursor;
+FETCH NEXT FROM constraint_cursor INTO @ConstraintName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @SQL = 'ALTER TABLE ' + OBJECT_NAME(parent_object_id) + ' DROP CONSTRAINT ' + @ConstraintName;
+    EXEC sp_executesql @SQL;
+    FETCH NEXT FROM constraint_cursor INTO @ConstraintName;
+END;
+
+CLOSE constraint_cursor;
+DEALLOCATE constraint_cursor;
+
+-- Step 4b: Drop foreign key constraints FROM users table
+DECLARE constraint_cursor2 CURSOR FOR
+SELECT name 
+FROM sys.foreign_keys 
+WHERE parent_object_id = OBJECT_ID('dbo.users');
+
+OPEN constraint_cursor2;
+FETCH NEXT FROM constraint_cursor2 INTO @ConstraintName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @SQL = 'ALTER TABLE dbo.users DROP CONSTRAINT ' + @ConstraintName;
+    EXEC sp_executesql @SQL;
+    FETCH NEXT FROM constraint_cursor2 INTO @ConstraintName;
+END;
+
+CLOSE constraint_cursor2;
+DEALLOCATE constraint_cursor2;
+
+-- Step 4c: Drop the users table
+DROP TABLE dbo.users;
+
+-- Step 4d: Verify it's gone
+SELECT * FROM sys.objects WHERE name = 'users';
+-- Should return no results
+```
+
+#### Step 5: Alternative - Use Existing Table
+
+If the table structure is correct, you can skip creation and just insert the users:
+
+```sql
+-- Check if users already exist
+SELECT * FROM dbo.users WHERE email IN ('dan@circuitry.solutions', 'mike@circuitry.solutions');
+
+-- If they don't exist, insert them
+IF NOT EXISTS (SELECT 1 FROM dbo.users WHERE email = 'dan@circuitry.solutions')
+BEGIN
+    INSERT INTO dbo.users (name, email, password_hash) 
+    VALUES ('Dan', 'dan@circuitry.solutions', 'W1@3!-j/R');
+END
+
+IF NOT EXISTS (SELECT 1 FROM dbo.users WHERE email = 'mike@circuitry.solutions')
+BEGIN
+    INSERT INTO dbo.users (name, email, password_hash) 
+    VALUES ('Mike', 'mike@circuitry.solutions', 'W1@3!-j/R');
+END
+
+-- Verify
+SELECT * FROM dbo.users;
+```
+
+### 1. Create Users Table (Fresh Installation)
 
 Run the following SQL script in SQL Server Management Studio to create the users table:
 
@@ -382,6 +530,11 @@ In a production environment, you should:
 
 ## Troubleshooting
 
+### "There is already an object named 'users' in the database" Error
+- Follow the **"If Table Already Exists - Resolution Steps"** section at the top of this document
+- Use the provided SQL queries to locate and inspect the existing table
+- Either drop and recreate the table, or use the existing table structure
+
 ### Login fails with "User not found"
 - Verify the users table was created successfully
 - Check that the initial users were inserted
@@ -402,3 +555,9 @@ In a production environment, you should:
 - Verify the employees table has an 'id' column that is a primary key
 - Use the troubleshooting queries above to diagnose the issue
 - Try creating the table without the foreign key first, then adding it separately
+
+### Table not visible in SSMS but exists
+- Right-click on Tables folder and select Refresh
+- Check if the table is in a different schema using the provided queries
+- Verify you're connected to the correct database
+- Close and reopen SSMS if refresh doesn't work
