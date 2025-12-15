@@ -64,8 +64,7 @@ export default function HomeScreen() {
       return;
     }
     
-    // Redirect to login screen instead of directly to check-in
-    router.push('/(tabs)/(home)/login');
+    router.push('/(tabs)/(home)/checkin');
   };
 
   const handleAdminPress = () => {

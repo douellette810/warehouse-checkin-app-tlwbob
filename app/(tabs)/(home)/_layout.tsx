@@ -13,20 +13,6 @@ export default function HomeLayout() {
         }}
       />
       <Stack.Screen
-        name="login"
-        options={{
-          headerShown: false,
-          title: 'Login'
-        }}
-      />
-      <Stack.Screen
-        name="change-password"
-        options={{
-          headerShown: false,
-          title: 'Change Password'
-        }}
-      />
-      <Stack.Screen
         name="checkin"
         options={{
           headerShown: false,

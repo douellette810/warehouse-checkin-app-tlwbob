@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import api from '@/app/api/client';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -21,6 +22,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 type AdminSection = 'employees' | 'companies' | 'categories' | 'value-scrap' | 'charge-materials' | 'i-series' | 'check-ins';
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const [expandedSection, setExpandedSection] = useState<AdminSection | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -1114,6 +1116,28 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <TouchableOpacity
+          style={styles.userSettingsButton}
+          onPress={() => router.push('/(tabs)/user-settings')}
+        >
+          <View style={styles.userSettingsContent}>
+            <IconSymbol
+              ios_icon_name="person.circle.fill"
+              android_material_icon_name="account_circle"
+              size={24}
+              color={colors.primary}
+            />
+            <Text style={styles.userSettingsText}>User Settings</Text>
+            <Text style={styles.userSettingsSubtext}>Change password & employee name</Text>
+          </View>
+          <IconSymbol
+            ios_icon_name="chevron.right"
+            android_material_icon_name="chevron_right"
+            size={20}
+            color={colors.textSecondary}
+          />
+        </TouchableOpacity>
+
         {(['check-ins', 'employees', 'companies', 'categories', 'value-scrap', 'charge-materials', 'i-series'] as AdminSection[]).map(renderAccordionSection)}
       </ScrollView>
 
@@ -1250,6 +1274,34 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 16,
     paddingBottom: 120,
+  },
+  userSettingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  userSettingsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  userSettingsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 12,
+    flex: 1,
+  },
+  userSettingsSubtext: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginLeft: 12,
   },
   accordionSection: {
     backgroundColor: colors.card,

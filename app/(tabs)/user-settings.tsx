@@ -20,7 +20,7 @@ import api from '@/app/api/client';
 
 const STORAGE_KEY_USER = '@warehouse_current_user';
 
-export default function ChangePasswordScreen() {
+export default function UserSettingsScreen() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -30,9 +30,13 @@ export default function ChangePasswordScreen() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [showEmployeePicker, setShowEmployeePicker] = useState(false);
 
   useEffect(() => {
     loadCurrentUser();
+    loadEmployees();
   }, []);
 
   const loadCurrentUser = async () => {
@@ -41,6 +45,7 @@ export default function ChangePasswordScreen() {
       if (userJson) {
         const user = JSON.parse(userJson);
         setCurrentUser(user);
+        setSelectedEmployeeId(user.employee_id);
         console.log('Current user loaded:', user.name);
       } else {
         Alert.alert('Error', 'No user logged in');
@@ -53,9 +58,20 @@ export default function ChangePasswordScreen() {
     }
   };
 
+  const loadEmployees = async () => {
+    try {
+      const response = await api.employees.getAll();
+      if (response.success && response.data) {
+        setEmployees(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading employees:', error);
+    }
+  };
+
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Error', 'Please fill in all password fields');
       return;
     }
 
@@ -89,16 +105,10 @@ export default function ChangePasswordScreen() {
         
         Alert.alert(
           'Success',
-          'Your password has been changed successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.back(),
-            },
-          ]
+          'Your password has been changed successfully!'
         );
         
-        // Clear form
+        // Clear password fields
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
@@ -114,6 +124,48 @@ export default function ChangePasswordScreen() {
     }
   };
 
+  const handleUpdateEmployeePreference = async (employeeId: string | null) => {
+    setLoading(true);
+    try {
+      const response = await api.auth.updateEmployeePreference(currentUser.id, employeeId);
+
+      if (response.success && response.data) {
+        // Update local storage
+        await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(response.data));
+        setCurrentUser(response.data);
+        setSelectedEmployeeId(employeeId);
+        
+        Alert.alert('Success', 'Employee preference updated successfully!');
+      } else {
+        Alert.alert('Error', response.error || 'Failed to update employee preference');
+      }
+    } catch (error) {
+      console.error('Error updating employee preference:', error);
+      Alert.alert('Error', 'An error occurred while updating employee preference');
+    } finally {
+      setLoading(false);
+      setShowEmployeePicker(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.removeItem(STORAGE_KEY_USER);
+            router.replace('/login');
+          },
+        },
+      ]
+    );
+  };
+
   if (!currentUser) {
     return (
       <View style={styles.loadingContainer}>
@@ -122,6 +174,8 @@ export default function ChangePasswordScreen() {
       </View>
     );
   }
+
+  const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
 
   return (
     <KeyboardAvoidingView
@@ -138,8 +192,8 @@ export default function ChangePasswordScreen() {
           />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Change Password</Text>
-          <Text style={styles.headerSubtitle}>Update your account password</Text>
+          <Text style={styles.headerTitle}>User Settings</Text>
+          <Text style={styles.headerSubtitle}>Manage your account</Text>
         </View>
       </View>
 
@@ -157,8 +211,90 @@ export default function ChangePasswordScreen() {
           </View>
         </View>
 
-        <View style={styles.formContainer}>
-          <Text style={styles.sectionTitle}>Password Information</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Employee Preference</Text>
+          <Text style={styles.sectionDescription}>
+            Select your employee name to auto-fill in check-in forms
+          </Text>
+          
+          <TouchableOpacity
+            style={styles.employeeSelector}
+            onPress={() => setShowEmployeePicker(!showEmployeePicker)}
+          >
+            <View style={styles.employeeSelectorContent}>
+              <IconSymbol
+                ios_icon_name="person.fill"
+                android_material_icon_name="person"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.employeeSelectorText}>
+                {selectedEmployee ? selectedEmployee.name : 'No employee selected'}
+              </Text>
+            </View>
+            <IconSymbol
+              ios_icon_name={showEmployeePicker ? 'chevron.up' : 'chevron.down'}
+              android_material_icon_name={showEmployeePicker ? 'expand_less' : 'expand_more'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+
+          {showEmployeePicker && (
+            <View style={styles.employeeList}>
+              <TouchableOpacity
+                style={[
+                  styles.employeeItem,
+                  !selectedEmployeeId && styles.employeeItemSelected
+                ]}
+                onPress={() => handleUpdateEmployeePreference(null)}
+              >
+                <Text style={[
+                  styles.employeeItemText,
+                  !selectedEmployeeId && styles.employeeItemTextSelected
+                ]}>
+                  No employee selected
+                </Text>
+                {!selectedEmployeeId && (
+                  <IconSymbol
+                    ios_icon_name="checkmark"
+                    android_material_icon_name="check"
+                    size={20}
+                    color={colors.primary}
+                  />
+                )}
+              </TouchableOpacity>
+              {employees.map((employee) => (
+                <TouchableOpacity
+                  key={employee.id}
+                  style={[
+                    styles.employeeItem,
+                    selectedEmployeeId === employee.id && styles.employeeItemSelected
+                  ]}
+                  onPress={() => handleUpdateEmployeePreference(employee.id)}
+                >
+                  <Text style={[
+                    styles.employeeItemText,
+                    selectedEmployeeId === employee.id && styles.employeeItemTextSelected
+                  ]}>
+                    {employee.name}
+                  </Text>
+                  {selectedEmployeeId === employee.id && (
+                    <IconSymbol
+                      ios_icon_name="checkmark"
+                      android_material_icon_name="check"
+                      size={20}
+                      color={colors.primary}
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Change Password</Text>
 
           <View style={styles.inputContainer}>
             <IconSymbol
@@ -280,6 +416,16 @@ export default function ChangePasswordScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <IconSymbol
+            ios_icon_name="arrow.right.square.fill"
+            android_material_icon_name="logout"
+            size={20}
+            color="#F44336"
+          />
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -361,10 +507,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
-  formContainer: {
+  section: {
     backgroundColor: colors.card,
     borderRadius: 12,
     padding: 20,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -372,7 +519,60 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
+    marginBottom: 8,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
     marginBottom: 16,
+  },
+  employeeSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  employeeSelectorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  employeeSelectorText: {
+    fontSize: 16,
+    color: colors.text,
+    marginLeft: 12,
+  },
+  employeeList: {
+    marginTop: 12,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  employeeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  employeeItemSelected: {
+    backgroundColor: colors.highlight,
+  },
+  employeeItemText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  employeeItemTextSelected: {
+    fontWeight: '600',
+    color: colors.primary,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -428,6 +628,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#F44336',
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F44336',
     marginLeft: 8,
   },
 });

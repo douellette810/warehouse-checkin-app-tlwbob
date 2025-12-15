@@ -46,8 +46,8 @@ export default function LoginScreen() {
         
         Alert.alert('Success', `Welcome back, ${response.data.name}!`);
         
-        // Navigate to check-in screen
-        router.replace('/(tabs)/(home)/checkin');
+        // Navigate to main app
+        router.replace('/(tabs)/(home)');
       } else {
         console.log('Login failed:', response.error);
         Alert.alert('Login Failed', response.error || 'Invalid email or password');
@@ -65,34 +65,19 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol
-            ios_icon_name="chevron.left"
-            android_material_icon_name="arrow_back"
-            size={24}
-            color={colors.text}
-          />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>User Login</Text>
-          <Text style={styles.headerSubtitle}>Sign in to continue</Text>
-        </View>
-      </View>
-
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <IconSymbol
-            ios_icon_name="person.circle.fill"
-            android_material_icon_name="account_circle"
-            size={80}
+            ios_icon_name="building.2.fill"
+            android_material_icon_name="warehouse"
+            size={100}
             color={colors.primary}
           />
         </View>
 
-        <Text style={styles.welcomeText}>Welcome to Warehouse Check-In</Text>
+        <Text style={styles.welcomeText}>Warehouse Check-In</Text>
         <Text style={styles.instructionText}>
-          Please enter your credentials to access the check-in system
+          Please sign in to continue
         </Text>
 
         <View style={styles.formContainer}>
@@ -189,56 +174,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    backgroundColor: colors.card,
-    paddingTop: 48,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-    elevation: 3,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    marginRight: 12,
-    padding: 4,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
   content: {
     flex: 1,
     padding: 20,
+    justifyContent: 'center',
   },
   iconContainer: {
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 24,
+    marginBottom: 32,
   },
   welcomeText: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '700',
     color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   instructionText: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
   },
   formContainer: {
     marginBottom: 24,

@@ -1,5 +1,6 @@
+
 import "react-native-reanimated";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useFonts } from "expo-font";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -7,6 +8,7 @@ import { SystemBars } from "react-native-edge-to-edge";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useColorScheme, Alert } from "react-native";
 import { useNetworkState } from "expo-network";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DarkTheme,
   DefaultTheme,
@@ -19,8 +21,10 @@ import { WidgetProvider } from "@/contexts/WidgetContext";
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+const STORAGE_KEY_USER = '@warehouse_current_user';
+
 export const unstable_settings = {
-  initialRouteName: "(tabs)", // Ensure any route can link back to `/`
+  initialRouteName: "login", // Start with login screen
 };
 
 export default function RootLayout() {
@@ -29,12 +33,35 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const userJson = await AsyncStorage.getItem(STORAGE_KEY_USER);
+      if (userJson) {
+        setIsAuthenticated(true);
+        // User is logged in, navigate to main app
+        router.replace('/(tabs)/(home)');
+      } else {
+        setIsAuthenticated(false);
+        // User is not logged in, stay on login screen
+      }
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      setIsAuthenticated(false);
+    }
+  };
 
   React.useEffect(() => {
     if (
@@ -48,7 +75,7 @@ export default function RootLayout() {
     }
   }, [networkState.isConnected, networkState.isInternetReachable]);
 
-  if (!loaded) {
+  if (!loaded || isAuthenticated === null) {
     return null;
   }
 
@@ -85,6 +112,15 @@ export default function RootLayout() {
           <WidgetProvider>
             <GestureHandlerRootView>
             <Stack>
+              {/* Login screen - shown first */}
+              <Stack.Screen 
+                name="login" 
+                options={{ 
+                  headerShown: false,
+                  gestureEnabled: false,
+                }} 
+              />
+
               {/* Main app with tabs */}
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
