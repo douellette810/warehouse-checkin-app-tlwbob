@@ -26,7 +26,7 @@ export const checkBackendConnection = async (timeout: number = 5000): Promise<Co
     
     // Create a promise that rejects after timeout
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Connection timeout')), timeout);
+      setTimeout(() => reject(new Error('Connection timeout - server did not respond')), timeout);
     });
     
     // Race between the health check and timeout
@@ -56,9 +56,20 @@ export const checkBackendConnection = async (timeout: number = 5000): Promise<Co
     const elapsed = Date.now() - startTime;
     console.error(`Backend connection check failed after ${elapsed}ms:`, error);
     
+    // Provide more specific error messages
+    let errorMessage = 'Unable to connect to backend server';
+    
+    if (error.message.includes('timeout')) {
+      errorMessage = 'Connection timeout - server not responding';
+    } else if (error.message.includes('Network request failed')) {
+      errorMessage = 'Network error - check your connection';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return {
       isConnected: false,
-      error: error.message || 'Unable to connect to backend',
+      error: errorMessage,
       lastChecked: new Date(),
     };
   }

@@ -12,6 +12,7 @@ export const colors = {
   highlight: '#BBDEFB',
   border: '#E0E0E0',
   success: '#4CAF50',
+  error: '#FF3B30',
   disabled: '#BDBDBD',
 };
 
