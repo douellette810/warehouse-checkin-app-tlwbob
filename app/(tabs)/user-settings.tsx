@@ -49,12 +49,12 @@ export default function UserSettingsScreen() {
         console.log('Current user loaded:', user.name);
       } else {
         Alert.alert('Error', 'No user logged in');
-        router.back();
+        router.replace('/login');
       }
     } catch (error) {
       console.error('Error loading user:', error);
       Alert.alert('Error', 'Failed to load user information');
-      router.back();
+      router.replace('/login');
     }
   };
 
@@ -158,8 +158,15 @@ export default function UserSettingsScreen() {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.removeItem(STORAGE_KEY_USER);
-            router.replace('/login');
+            try {
+              await AsyncStorage.removeItem(STORAGE_KEY_USER);
+              console.log('User logged out successfully');
+              // Use replace to prevent going back to authenticated screens
+              router.replace('/login');
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
           },
         },
       ]

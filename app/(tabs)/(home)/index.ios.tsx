@@ -12,9 +12,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { checkBackendConnection, ConnectionStatus } from '@/utils/connectionCheck';
+
+const STORAGE_KEY_USER = '@warehouse_current_user';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -87,6 +90,26 @@ export default function HomeScreen() {
     setShowAdminLogin(true);
   };
 
+  const handleUserSettingsPress = () => {
+    if (!connectionStatus?.isConnected) {
+      Alert.alert(
+        'Backend Not Connected',
+        'Cannot access User Settings. The backend server is not accessible.\n\n' +
+        'Please ensure:\n' +
+        '- You are connected to the local network\n' +
+        '- The backend server is running\n' +
+        '- The server IP address is correct in the app configuration',
+        [
+          { text: 'Retry', onPress: checkConnection },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+    
+    router.push('/(tabs)/user-settings');
+  };
+
   const handleAdminLogin = () => {
     // Default credentials
     if (username === 'admin' && password === 'password') {
@@ -97,6 +120,31 @@ export default function HomeScreen() {
     } else {
       Alert.alert('Login Failed', 'Invalid username or password');
     }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem(STORAGE_KEY_USER);
+              console.log('User logged out successfully');
+              // Use replace to prevent going back to authenticated screens
+              router.replace('/login');
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getConnectionStatusColor = () => {
@@ -222,6 +270,63 @@ export default function HomeScreen() {
               <Text style={styles.disabledBadgeText}>Requires Connection</Text>
             </View>
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[
+            styles.optionCard,
+            !connectionStatus?.isConnected && styles.optionCardDisabled
+          ]} 
+          onPress={handleUserSettingsPress}
+          disabled={!connectionStatus?.isConnected}
+        >
+          <View style={styles.iconContainer}>
+            <IconSymbol
+              ios_icon_name="person.circle.fill"
+              android_material_icon_name="account_circle"
+              size={64}
+              color={connectionStatus?.isConnected ? '#4CAF50' : colors.textSecondary}
+            />
+          </View>
+          <Text style={[
+            styles.optionTitle,
+            !connectionStatus?.isConnected && styles.optionTitleDisabled
+          ]}>
+            User Settings
+          </Text>
+          <Text style={[
+            styles.optionDescription,
+            !connectionStatus?.isConnected && styles.optionDescriptionDisabled
+          ]}>
+            Change password and employee preferences
+          </Text>
+          {!connectionStatus?.isConnected && (
+            <View style={styles.disabledBadge}>
+              <IconSymbol
+                ios_icon_name="exclamationmark.triangle.fill"
+                android_material_icon_name="warning"
+                size={16}
+                color="#F44336"
+              />
+              <Text style={styles.disabledBadgeText}>Requires Connection</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.logoutCard}
+          onPress={handleLogout}
+        >
+          <View style={styles.iconContainer}>
+            <IconSymbol
+              ios_icon_name="arrow.right.square.fill"
+              android_material_icon_name="logout"
+              size={48}
+              color="#F44336"
+            />
+          </View>
+          <Text style={styles.logoutTitle}>Logout</Text>
+          <Text style={styles.logoutDescription}>Sign out of your account</Text>
         </TouchableOpacity>
 
         {!connectionStatus?.isConnected && connectionStatus?.error && (
@@ -409,6 +514,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#F44336',
     marginLeft: 6,
+  },
+  logoutCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#F44336',
+    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)',
+    elevation: 4,
+  },
+  logoutTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#F44336',
+    marginBottom: 8,
+  },
+  logoutDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   errorCard: {
     backgroundColor: colors.card,

@@ -11,7 +11,6 @@ const STORAGE_KEY_USER = '@warehouse_current_user';
 
 export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [backendConnected, setBackendConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -22,6 +21,11 @@ export default function Index() {
 
   const initializeApp = async () => {
     console.log('Initializing app...');
+    
+    // Clear any existing authentication on app start
+    // This ensures users must login every time the app is opened
+    console.log('Clearing authentication state...');
+    await AsyncStorage.removeItem(STORAGE_KEY_USER);
     
     // Step 1: Check backend connection first
     console.log('Step 1: Checking backend connection...');
@@ -38,29 +42,7 @@ export default function Index() {
     console.log('Backend is accessible');
     setBackendConnected(true);
     setConnectionError(null);
-    
-    // Step 2: Check authentication status
-    console.log('Step 2: Checking authentication status...');
-    await checkAuthStatus();
-  };
-
-  const checkAuthStatus = async () => {
-    try {
-      const userJson = await AsyncStorage.getItem(STORAGE_KEY_USER);
-      
-      if (userJson) {
-        console.log('User is authenticated');
-        setIsAuthenticated(true);
-      } else {
-        console.log('User is not authenticated');
-        setIsAuthenticated(false);
-      }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(false);
   };
 
   const handleRetry = async () => {
@@ -106,9 +88,9 @@ export default function Index() {
           Unable to connect to the server. Please check:
         </Text>
         <View style={styles.checklistContainer}>
-          <Text style={styles.checklistItem}>• Server is running on CRSERV</Text>
-          <Text style={styles.checklistItem}>• You are connected to the local network</Text>
-          <Text style={styles.checklistItem}>• Server IP address is correct</Text>
+          <Text style={styles.checklistItem}>- Server is running on CRSERV</Text>
+          <Text style={styles.checklistItem}>- You are connected to the local network</Text>
+          <Text style={styles.checklistItem}>- Server IP address is correct</Text>
         </View>
         {connectionError && (
           <View style={styles.errorDetailsBox}>
@@ -157,11 +139,8 @@ export default function Index() {
     );
   }
 
-  // Backend is connected, now check authentication
-  if (isAuthenticated) {
-    return <Redirect href="/(tabs)/(home)" />;
-  }
-
+  // Backend is connected, redirect to login
+  // Users must login every time the app is opened
   return <Redirect href="/login" />;
 }
 
