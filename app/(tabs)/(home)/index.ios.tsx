@@ -28,10 +28,10 @@ export default function HomeScreen() {
     // Check connection on mount
     checkConnection();
     
-    // Set up periodic connection checks every 10 seconds
+    // Set up periodic connection checks every 30 seconds (reduced from 10)
     const interval = setInterval(() => {
       checkConnection();
-    }, 10000);
+    }, 30000);
     
     return () => clearInterval(interval);
   }, []);
