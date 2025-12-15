@@ -12,7 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles/commonStyles';
-import { supabase } from '@/utils/supabase';
+import api from '@/app/api/client';
 import { Employee, Company, Category, Material, ISeriesProcessor, CheckInFormData, FormStep } from '@/types/checkIn';
 import BasicInfoStep from '@/components/checkIn/BasicInfoStep';
 import CategoriesStep from '@/components/checkIn/CategoriesStep';
@@ -80,52 +80,52 @@ export default function CheckInScreen() {
         chargeMaterialsRes,
         iSeriesRes,
       ] = await Promise.all([
-        supabase.from('employees').select('*').order('name'),
-        supabase.from('companies').select('*').order('name'),
-        supabase.from('categories').select('*').order('name'),
-        supabase.from('value_scrap').select('*').order('name'),
-        supabase.from('charge_materials').select('*').order('name'),
-        supabase.from('i_series').select('*').order('processor_series, processor_generation'),
+        api.employees.getAll(),
+        api.companies.getAll(),
+        api.categories.getAll(),
+        api.valueScrap.getAll(),
+        api.chargeMaterials.getAll(),
+        api.iSeries.getAll(),
       ]);
 
-      if (employeesRes.error) {
+      if (employeesRes.success && employeesRes.data) {
+        setEmployees(employeesRes.data);
+      } else {
         console.log('Error loading employees:', employeesRes.error);
-      } else {
-        setEmployees(employeesRes.data || []);
       }
 
-      if (companiesRes.error) {
+      if (companiesRes.success && companiesRes.data) {
+        setCompanies(companiesRes.data);
+      } else {
         console.log('Error loading companies:', companiesRes.error);
-      } else {
-        setCompanies(companiesRes.data || []);
       }
 
-      if (categoriesRes.error) {
+      if (categoriesRes.success && categoriesRes.data) {
+        setCategories(categoriesRes.data);
+      } else {
         console.log('Error loading categories:', categoriesRes.error);
-      } else {
-        setCategories(categoriesRes.data || []);
       }
 
-      if (valueScrapRes.error) {
+      if (valueScrapRes.success && valueScrapRes.data) {
+        setValueScrap(valueScrapRes.data);
+      } else {
         console.log('Error loading value scrap:', valueScrapRes.error);
-      } else {
-        setValueScrap(valueScrapRes.data || []);
       }
 
-      if (chargeMaterialsRes.error) {
+      if (chargeMaterialsRes.success && chargeMaterialsRes.data) {
+        setChargeMaterials(chargeMaterialsRes.data);
+      } else {
         console.log('Error loading charge materials:', chargeMaterialsRes.error);
-      } else {
-        setChargeMaterials(chargeMaterialsRes.data || []);
       }
 
-      if (iSeriesRes.error) {
-        console.log('Error loading i-Series processors:', iSeriesRes.error);
+      if (iSeriesRes.success && iSeriesRes.data) {
+        setISeriesProcessors(iSeriesRes.data);
       } else {
-        setISeriesProcessors(iSeriesRes.data || []);
+        console.log('Error loading i-Series processors:', iSeriesRes.error);
       }
     } catch (error) {
       console.log('Error loading data:', error);
-      Alert.alert('Error', 'Failed to load data. Please check your Supabase connection.');
+      Alert.alert('Error', 'Failed to load data. Please check your backend connection.');
     } finally {
       setLoading(false);
     }
@@ -219,24 +219,14 @@ export default function CheckInScreen() {
       console.log('Confirming check-in saved with ID:', checkInId);
       
       // Query the database to confirm the check-in exists
-      const { data, error } = await supabase
-        .from('check_ins')
-        .select('id, employee_name, company_name, created_at')
-        .eq('id', checkInId)
-        .single();
+      const response = await api.checkIns.getById(checkInId);
 
-      if (error) {
-        console.error('Error confirming check-in:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        return false;
-      }
-
-      if (!data) {
+      if (!response.success || !response.data) {
         console.error('Check-in not found in database after save. ID:', checkInId);
         return false;
       }
 
-      console.log('Check-in confirmed in database:', data);
+      console.log('Check-in confirmed in database:', response.data);
       return true;
     } catch (error) {
       console.error('Exception during check-in confirmation:', error);
@@ -261,7 +251,7 @@ export default function CheckInScreen() {
       // Prepare the data to insert
       const checkInData = {
         employee_name: formData.employeeName,
-        started_at: formData.startedAt,
+        started_at: formData.startedAt || new Date().toISOString(),
         finished_at: finishedAt,
         total_time: formData.totalTime,
         company_id: formData.companyId,
@@ -279,53 +269,31 @@ export default function CheckInScreen() {
         has_i_series_laptops: formData.hasISeriesLaptops || false,
         i_series_pcs: formData.iSeriesPcs,
         i_series_laptops: formData.iSeriesLaptops,
-        suspected_value_note: formData.suspectedValueNote,
-        other_notes: formData.otherNotes,
+        suspected_value_note: formData.suspectedValueNote || '',
+        other_notes: formData.otherNotes || '',
       };
 
       console.log('Inserting check-in data:', JSON.stringify(checkInData, null, 2));
 
       // Insert the check-in
-      const { data, error } = await supabase
-        .from('check_ins')
-        .insert(checkInData)
-        .select('id')
-        .single();
+      const response = await api.checkIns.create(checkInData as any);
 
-      if (error) {
-        console.error('Error submitting check-in:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        console.error('Error details:', JSON.stringify(error, null, 2));
+      if (!response.success || !response.data) {
+        console.error('Error submitting check-in:', response.error);
         
         // Trigger error haptic feedback
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         
         Alert.alert(
           'Save Failed',
-          `Failed to save check-in. Error: ${error.message}. Please try again or contact support.`
+          `Failed to save check-in. Error: ${response.error || 'Unknown error'}. Please try again or contact support.`
         );
         
         setSubmitting(false);
         return;
       }
 
-      if (!data || !data.id) {
-        console.error('No data returned from insert operation');
-        
-        // Trigger error haptic feedback
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        
-        Alert.alert(
-          'Save Failed',
-          'Failed to save check-in. No ID returned from database. Please try again.'
-        );
-        
-        setSubmitting(false);
-        return;
-      }
-
-      const checkInId = data.id;
+      const checkInId = response.data.id;
       console.log('Check-in inserted with ID:', checkInId);
 
       // Confirm the check-in was saved
@@ -426,7 +394,7 @@ export default function CheckInScreen() {
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Loading data...</Text>
         <Text style={styles.setupText}>
-          Make sure Supabase is configured with the required tables.
+          Make sure your backend server is running and accessible.
         </Text>
       </View>
     );

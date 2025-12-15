@@ -1,22 +1,14 @@
 
-let db: any = null;
+// This file is no longer needed as we're using SQL Server backend
+// All database operations are now handled through the API client
 
 export const initDatabase = async () => {
-  try {
-    console.log('Local database initialization skipped - using Supabase');
-    return null;
-  } catch (error) {
-    console.error('Error initializing database:', error);
-    throw error;
-  }
-};
-
-const createTables = async () => {
-  console.log('Local database table creation skipped - using Supabase');
+  console.log('Database initialization skipped - using SQL Server backend via API');
+  return null;
 };
 
 export const getDatabase = () => {
-  console.log('Local database access skipped - using Supabase');
+  console.log('Database access skipped - using SQL Server backend via API');
   return null;
 };
 

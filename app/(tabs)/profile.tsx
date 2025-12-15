@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
-import { supabase } from '@/utils/supabase';
+import api from '@/app/api/client';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -52,41 +52,36 @@ export default function ProfileScreen() {
 
   const loadDataForSection = useCallback(async (section: AdminSection) => {
     try {
-      let tableName = '';
+      let response;
       switch (section) {
         case 'employees':
-          tableName = 'employees';
+          response = await api.employees.getAll();
           break;
         case 'companies':
-          tableName = 'companies';
+          response = await api.companies.getAll();
           break;
         case 'categories':
-          tableName = 'categories';
+          response = await api.categories.getAll();
           break;
         case 'value-scrap':
-          tableName = 'value_scrap';
+          response = await api.valueScrap.getAll();
           break;
         case 'charge-materials':
-          tableName = 'charge_materials';
+          response = await api.chargeMaterials.getAll();
           break;
         case 'i-series':
-          tableName = 'i_series';
+          response = await api.iSeries.getAll();
           break;
         case 'check-ins':
-          tableName = 'check_ins';
+          response = await api.checkIns.getAll();
           break;
       }
 
-      const { data: result, error } = await supabase
-        .from(tableName)
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.log('Error loading data:', error);
+      if (response.success && response.data) {
+        console.log(`Loaded ${response.data.length} items from ${section}`);
+        setData(prev => ({ ...prev, [section]: response.data || [] }));
       } else {
-        console.log(`Loaded ${result?.length || 0} items from ${tableName}`);
-        setData(prev => ({ ...prev, [section]: result || [] }));
+        console.log('Error loading data:', response.error);
       }
     } catch (error) {
       console.log('Error loading data:', error);
@@ -108,52 +103,43 @@ export default function ProfileScreen() {
   const handleAdd = async (section: AdminSection) => {
     setLoading(true);
     try {
-      let tableName = '';
-      let insertData: any = {};
+      let response;
 
       switch (section) {
         case 'employees':
-          tableName = 'employees';
-          insertData = { name: employeeName };
+          response = await api.employees.create(employeeName);
           break;
         case 'companies':
-          tableName = 'companies';
-          insertData = {
+          response = await api.companies.create({
             name: companyName,
             address: companyAddress,
             contact_person: companyContact,
             email: companyEmail,
             phone: companyPhone,
-          };
+          });
           break;
         case 'categories':
-          tableName = 'categories';
-          insertData = { name: categoryName };
+          response = await api.categories.create(categoryName);
           break;
         case 'value-scrap':
-          tableName = 'value_scrap';
-          insertData = { name: materialName, measurement: materialMeasurement };
+          response = await api.valueScrap.create({ name: materialName, measurement: materialMeasurement });
           break;
         case 'charge-materials':
-          tableName = 'charge_materials';
-          insertData = { name: materialName, measurement: materialMeasurement };
+          response = await api.chargeMaterials.create({ name: materialName, measurement: materialMeasurement });
           break;
         case 'i-series':
-          tableName = 'i_series';
-          insertData = { processor_series: processorSeries, processor_generation: processorGeneration };
+          response = await api.iSeries.create({ processor_series: processorSeries, processor_generation: processorGeneration });
           break;
       }
 
-      const { error } = await supabase.from(tableName).insert(insertData);
-
-      if (error) {
-        console.log('Error adding data:', error);
-        Alert.alert('Error', 'Failed to add item. Please try again.');
-      } else {
+      if (response && response.success) {
         Alert.alert('Success', 'Item added successfully!');
         resetForm();
         setShowAddModal(false);
         loadDataForSection(section);
+      } else {
+        console.log('Error adding data:', response?.error);
+        Alert.alert('Error', 'Failed to add item. Please try again.');
       }
     } catch (error) {
       console.log('Error adding data:', error);
@@ -168,56 +154,44 @@ export default function ProfileScreen() {
     
     setLoading(true);
     try {
-      let tableName = '';
-      let updateData: any = {};
+      let response;
 
       switch (section) {
         case 'employees':
-          tableName = 'employees';
-          updateData = { name: employeeName };
+          response = await api.employees.update(editingItem.id, employeeName);
           break;
         case 'companies':
-          tableName = 'companies';
-          updateData = {
+          response = await api.companies.update(editingItem.id, {
             name: companyName,
             address: companyAddress,
             contact_person: companyContact,
             email: companyEmail,
             phone: companyPhone,
-          };
+          });
           break;
         case 'categories':
-          tableName = 'categories';
-          updateData = { name: categoryName };
+          response = await api.categories.update(editingItem.id, categoryName);
           break;
         case 'value-scrap':
-          tableName = 'value_scrap';
-          updateData = { name: materialName, measurement: materialMeasurement };
+          response = await api.valueScrap.update(editingItem.id, { name: materialName, measurement: materialMeasurement });
           break;
         case 'charge-materials':
-          tableName = 'charge_materials';
-          updateData = { name: materialName, measurement: materialMeasurement };
+          response = await api.chargeMaterials.update(editingItem.id, { name: materialName, measurement: materialMeasurement });
           break;
         case 'i-series':
-          tableName = 'i_series';
-          updateData = { processor_series: processorSeries, processor_generation: processorGeneration };
+          response = await api.iSeries.update(editingItem.id, { processor_series: processorSeries, processor_generation: processorGeneration });
           break;
       }
 
-      const { error } = await supabase
-        .from(tableName)
-        .update(updateData)
-        .eq('id', editingItem.id);
-
-      if (error) {
-        console.log('Error updating data:', error);
-        Alert.alert('Error', 'Failed to update item. Please try again.');
-      } else {
+      if (response && response.success) {
         Alert.alert('Success', 'Item updated successfully!');
         resetForm();
         setShowEditModal(false);
         setEditingItem(null);
         loadDataForSection(section);
+      } else {
+        console.log('Error updating data:', response?.error);
+        Alert.alert('Error', 'Failed to update item. Please try again.');
       }
     } catch (error) {
       console.log('Error updating data:', error);
@@ -247,35 +221,33 @@ export default function ProfileScreen() {
           onPress: async () => {
             setLoading(true);
             try {
-              let tableName = '';
+              let response;
               switch (section) {
                 case 'employees':
-                  tableName = 'employees';
+                  response = await api.employees.delete(id);
                   break;
                 case 'companies':
-                  tableName = 'companies';
+                  response = await api.companies.delete(id);
                   break;
                 case 'categories':
-                  tableName = 'categories';
+                  response = await api.categories.delete(id);
                   break;
                 case 'value-scrap':
-                  tableName = 'value_scrap';
+                  response = await api.valueScrap.delete(id);
                   break;
                 case 'charge-materials':
-                  tableName = 'charge_materials';
+                  response = await api.chargeMaterials.delete(id);
                   break;
                 case 'i-series':
-                  tableName = 'i_series';
+                  response = await api.iSeries.delete(id);
                   break;
               }
 
-              const { error } = await supabase.from(tableName).delete().eq('id', id);
-
-              if (error) {
-                console.log('Error deleting data:', error);
-                Alert.alert('Error', 'Failed to delete item. Please try again.');
-              } else {
+              if (response && response.success) {
                 loadDataForSection(section);
+              } else {
+                console.log('Error deleting data:', response?.error);
+                Alert.alert('Error', 'Failed to delete item. Please try again.');
               }
             } catch (error) {
               console.log('Error deleting data:', error);

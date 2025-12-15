@@ -1,8 +1,13 @@
 
+// This file is no longer needed as we're using SQL Server backend
+// All database operations are now handled through the API client
+
 import { initDatabase } from './database';
 import * as operations from './operations';
 
-// Initialize database on module load
+// This module is deprecated - use the API client instead
+// Import: import api from '@/app/api/client';
+
 let dbInitialized = false;
 
 export const ensureDbInitialized = async () => {
@@ -12,12 +17,12 @@ export const ensureDbInitialized = async () => {
   }
 };
 
-// Export a client-like interface similar to Supabase
+// Export a client-like interface (deprecated - use API client instead)
 export const localDb = {
   // Initialize the database
   init: ensureDbInitialized,
   
-  // Table operations
+  // Table operations (all deprecated)
   employees: {
     getAll: operations.getAllEmployees,
     add: operations.addEmployee,
