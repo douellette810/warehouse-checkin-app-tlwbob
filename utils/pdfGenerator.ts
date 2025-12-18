@@ -2,7 +2,7 @@
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { CheckInFormData } from '@/types/checkIn';
-import { Directory, File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
 
 /**
@@ -41,25 +41,44 @@ const DEFAULT_CONFIG: PDFTemplateConfig = {
 };
 
 /**
+ * Escape HTML special characters to prevent HTML injection and parsing errors
+ */
+const escapeHtml = (text: string | null | undefined): string => {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+/**
  * Format date and time for PDF display
  */
 const formatDateTime = (dateString: string | null): { date: string; time: string } => {
   if (!dateString) return { date: '', time: '' };
-  const date = new Date(dateString);
   
-  const dateStr = date.toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-  });
-  
-  const timeStr = date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
-  
-  return { date: dateStr, time: timeStr };
+  try {
+    const date = new Date(dateString);
+    
+    const dateStr = date.toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+    });
+    
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    
+    return { date: dateStr, time: timeStr };
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return { date: '', time: '' };
+  }
 };
 
 /**
@@ -75,12 +94,22 @@ const formatDateForFilename = (dateString: string | null): string => {
     }).replace(/\//g, '-');
   }
   
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-  }).replace(/\//g, '-');
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+    }).replace(/\//g, '-');
+  } catch (error) {
+    console.error('Error formatting date for filename:', error);
+    const now = new Date();
+    return now.toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+    }).replace(/\//g, '-');
+  }
 };
 
 /**
@@ -105,12 +134,18 @@ const generateFilename = (checkIn: CheckInFormData): string => {
  */
 const calculateDuration = (startedAt: string | null, finishedAt: string | null): string => {
   if (!startedAt || !finishedAt) return '';
-  const start = new Date(startedAt);
-  const finish = new Date(finishedAt);
-  const durationMs = finish.getTime() - start.getTime();
-  const hours = Math.floor(durationMs / 3600000);
-  const minutes = Math.floor((durationMs % 3600000) / 60000);
-  return `${hours}h ${minutes}m`;
+  
+  try {
+    const start = new Date(startedAt);
+    const finish = new Date(finishedAt);
+    const durationMs = finish.getTime() - start.getTime();
+    const hours = Math.floor(durationMs / 3600000);
+    const minutes = Math.floor((durationMs % 3600000) / 60000);
+    return `${hours}h ${minutes}m`;
+  } catch (error) {
+    console.error('Error calculating duration:', error);
+    return '';
+  }
 };
 
 /**
@@ -291,7 +326,7 @@ const generateMainSheetHTML = (
       <body>
         ${config.companyName ? `
           <div class="header">
-            <h1>${config.companyName}</h1>
+            <h1>${escapeHtml(config.companyName)}</h1>
           </div>
         ` : ''}
         
@@ -300,21 +335,21 @@ const generateMainSheetHTML = (
             <div class="field-row">
               <div class="field">
                 <span class="field-label">Name</span>
-                <span class="field-value">${checkIn.employeeName || ''}</span>
+                <span class="field-value">${escapeHtml(checkIn.employeeName)}</span>
               </div>
               <div class="field">
                 <span class="field-label">Date</span>
-                <span class="field-value">${date}</span>
+                <span class="field-value">${escapeHtml(date)}</span>
               </div>
               <div class="field">
                 <span class="field-label">Time</span>
-                <span class="field-value">${time}</span>
+                <span class="field-value">${escapeHtml(time)}</span>
               </div>
             </div>
             
             <div class="full-width-field">
               <span class="field-label">Total Time Out and Back</span>
-              <span class="field-value">${checkIn.totalTime || duration} Hours</span>
+              <span class="field-value">${escapeHtml(checkIn.totalTime || duration)} Hours</span>
             </div>
           </div>
         ` : ''}
@@ -322,29 +357,29 @@ const generateMainSheetHTML = (
         <div class="section">
           <div class="full-width-field">
             <span class="field-label">Company of Origin</span>
-            <span class="field-value">${checkIn.companyName || ''}</span>
+            <span class="field-value">${escapeHtml(checkIn.companyName)}</span>
           </div>
           
           <div class="full-width-field">
             <span class="field-label">Address</span>
-            <span class="field-value">${checkIn.address || ''}</span>
+            <span class="field-value">${escapeHtml(checkIn.address)}</span>
           </div>
           
           <div class="field-row">
             <div class="field">
               <span class="field-label">Contact Person</span>
-              <span class="field-value">${checkIn.contactPerson || ''}</span>
+              <span class="field-value">${escapeHtml(checkIn.contactPerson)}</span>
             </div>
           </div>
           
           <div class="field-row">
             <div class="field">
               <span class="field-label">EMAIL</span>
-              <span class="field-value">${checkIn.email || ''}</span>
+              <span class="field-value">${escapeHtml(checkIn.email)}</span>
             </div>
             <div class="field">
               <span class="field-label">PHONE</span>
-              <span class="field-value">${checkIn.phone || ''}</span>
+              <span class="field-value">${escapeHtml(checkIn.phone)}</span>
             </div>
           </div>
         </div>
@@ -369,8 +404,8 @@ const generateMainSheetHTML = (
                 <tbody>
                   ${checkIn.categories.map(item => `
                     <tr>
-                      <td>${item.category}</td>
-                      <td>${item.quantity}</td>
+                      <td>${escapeHtml(item.category)}</td>
+                      <td>${escapeHtml(item.quantity)}</td>
                     </tr>
                   `).join('')}
                   <tr style="font-weight: bold;">
@@ -395,7 +430,7 @@ const generateMainSheetHTML = (
                     <div class="scrap-field">
                       <div class="scrap-field-label">Scrap ${index + 1}</div>
                       <div class="scrap-field-input">
-                        ${scrapItem ? `${scrapItem.quantity} Lbs.` : '_____ Lbs.'}
+                        ${scrapItem ? `${escapeHtml(scrapItem.quantity)} Lbs.` : '_____ Lbs.'}
                       </div>
                     </div>
                   `;
@@ -414,7 +449,7 @@ const generateMainSheetHTML = (
                   <div class="scrap-field">
                     <div class="scrap-field-label">Value Scrap ${index + 1}</div>
                     <div class="scrap-field-input">
-                      ${valueItem ? `${valueItem.materialName}: ${valueItem.quantity} ${valueItem.measurement}` : '_____ Lbs.'}
+                      ${valueItem ? `${escapeHtml(valueItem.materialName)}: ${escapeHtml(valueItem.quantity)} ${escapeHtml(valueItem.measurement)}` : '_____ Lbs.'}
                     </div>
                   </div>
                 `;
@@ -429,7 +464,7 @@ const generateMainSheetHTML = (
               <div>
                 <strong>Suspected Value:</strong>
                 <div style="border: 1px solid #000; padding: 8px; margin-top: 5px;">
-                  ${checkIn.suspectedValueNote}
+                  ${escapeHtml(checkIn.suspectedValueNote)}
                 </div>
               </div>
             ` : ''}
@@ -438,7 +473,7 @@ const generateMainSheetHTML = (
               <div style="margin-top: 10px;">
                 <strong>Other Notes / Damages / Customer Requests:</strong>
                 <div style="border: 1px solid #000; padding: 8px; margin-top: 5px;">
-                  ${checkIn.otherNotes}
+                  ${escapeHtml(checkIn.otherNotes)}
                 </div>
               </div>
             ` : ''}
@@ -566,9 +601,9 @@ const generateISeriesSheetHTML = (
                 <tbody>
                   ${checkIn.iSeriesPcs.map(item => `
                     <tr>
-                      <td>${item.processorSeries}</td>
-                      <td>${item.processorGeneration}</td>
-                      <td>${item.quantity}</td>
+                      <td>${escapeHtml(item.processorSeries)}</td>
+                      <td>${escapeHtml(item.processorGeneration)}</td>
+                      <td>${escapeHtml(item.quantity)}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -588,9 +623,9 @@ const generateISeriesSheetHTML = (
                 <tbody>
                   ${checkIn.iSeriesLaptops.map(item => `
                     <tr>
-                      <td>${item.processorSeries}</td>
-                      <td>${item.processorGeneration}</td>
-                      <td>${item.quantity}</td>
+                      <td>${escapeHtml(item.processorSeries)}</td>
+                      <td>${escapeHtml(item.processorGeneration)}</td>
+                      <td>${escapeHtml(item.quantity)}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -656,7 +691,8 @@ export const generateCheckInPDF = async (
       </html>
     `;
     
-    // Generate PDF
+    // Generate PDF with error handling
+    console.log('Calling Print.printToFileAsync...');
     const { uri } = await Print.printToFileAsync({
       html: combinedHTML,
     });
@@ -667,6 +703,7 @@ export const generateCheckInPDF = async (
     const fileName = generateFilename(checkIn);
     
     // Share the PDF with the proper filename
+    console.log('Sharing PDF:', fileName);
     await shareAsync(uri, {
       mimeType: 'application/pdf',
       dialogTitle: `Share ${fileName}`,
@@ -676,6 +713,7 @@ export const generateCheckInPDF = async (
     console.log('PDF shared successfully:', fileName);
   } catch (error) {
     console.error('Error generating PDF:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     throw error;
   }
 };
@@ -709,19 +747,21 @@ export const generateMultipleCheckInsPDF = async (
     }
     
     // Create a temporary directory to store all PDFs
-    const tempDir = new Directory(Paths.cache, 'check-in-exports');
+    const tempDirPath = `${FileSystem.cacheDirectory}check-in-exports/`;
     
     try {
       // Create the directory if it doesn't exist
-      if (!tempDir.exists) {
-        tempDir.create();
+      const dirInfo = await FileSystem.getInfoAsync(tempDirPath);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(tempDirPath, { intermediates: true });
+        console.log('Created temp directory:', tempDirPath);
       }
     } catch (error) {
-      console.log('Directory already exists or error creating:', error);
+      console.log('Error creating directory:', error);
     }
     
     // Generate individual PDFs
-    const generatedFiles: File[] = [];
+    const generatedFiles: string[] = [];
     let successCount = 0;
     let failCount = 0;
     
@@ -769,20 +809,25 @@ export const generateMultipleCheckInsPDF = async (
         `;
         
         // Generate PDF
+        console.log(`Calling Print.printToFileAsync for check-in ${i + 1}...`);
         const { uri } = await Print.printToFileAsync({
           html: combinedHTML,
         });
         
+        console.log(`PDF ${i + 1} generated:`, uri);
+        
         // Generate filename with proper format
         const fileName = generateFilename(checkIn);
-        
-        // Copy the PDF to our temp directory with the proper filename
-        const destinationFile = new File(tempDir, fileName);
-        const sourceFile = new File(uri);
+        const destinationPath = `${tempDirPath}${fileName}`;
         
         try {
-          sourceFile.copy(destinationFile);
-          generatedFiles.push(destinationFile);
+          // Copy the PDF to our temp directory with the proper filename
+          await FileSystem.copyAsync({
+            from: uri,
+            to: destinationPath,
+          });
+          
+          generatedFiles.push(destinationPath);
           successCount++;
           console.log(`Successfully generated: ${fileName}`);
         } catch (copyError) {
@@ -792,6 +837,7 @@ export const generateMultipleCheckInsPDF = async (
         
       } catch (error) {
         console.error(`Error generating PDF for ${checkIn.companyName}:`, error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
         failCount++;
       }
     }
@@ -811,7 +857,7 @@ export const generateMultipleCheckInsPDF = async (
     // Note: On mobile, we can only share one file at a time with expo-sharing
     // For multiple files, we would need to zip them or use a different approach
     if (generatedFiles.length === 1) {
-      await shareAsync(generatedFiles[0].uri, {
+      await shareAsync(generatedFiles[0], {
         mimeType: 'application/pdf',
         dialogTitle: 'Share Check-In PDF',
         UTI: 'com.adobe.pdf',
@@ -824,7 +870,7 @@ export const generateMultipleCheckInsPDF = async (
       );
     } else {
       // For multiple files, share the first one and inform the user
-      await shareAsync(generatedFiles[0].uri, {
+      await shareAsync(generatedFiles[0], {
         mimeType: 'application/pdf',
         dialogTitle: 'Share Check-In PDFs',
         UTI: 'com.adobe.pdf',
@@ -834,7 +880,7 @@ export const generateMultipleCheckInsPDF = async (
         'Export Complete',
         `Successfully exported ${successCount} PDF files.\n\n` +
         `Note: Due to platform limitations, files are being shared one at a time. ` +
-        `The files are saved in:\n${tempDir.uri}\n\n` +
+        `The files are saved in:\n${tempDirPath}\n\n` +
         `You can find all exported PDFs in your device's file manager.`,
         [
           {
@@ -843,7 +889,7 @@ export const generateMultipleCheckInsPDF = async (
               // Share remaining files one by one
               for (let i = 1; i < generatedFiles.length; i++) {
                 try {
-                  await shareAsync(generatedFiles[i].uri, {
+                  await shareAsync(generatedFiles[i], {
                     mimeType: 'application/pdf',
                     dialogTitle: `Share Check-In PDF (${i + 1}/${generatedFiles.length})`,
                     UTI: 'com.adobe.pdf',
@@ -863,6 +909,7 @@ export const generateMultipleCheckInsPDF = async (
     
   } catch (error) {
     console.error('Error generating multiple PDFs:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     Alert.alert(
       'Export Error',
       'An error occurred while exporting PDFs. Please try again.',
