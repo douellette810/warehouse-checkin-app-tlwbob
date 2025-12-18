@@ -19,8 +19,6 @@ export interface PDFTemplateConfig {
   showChargeMaterials?: boolean;
   showISeries?: boolean;
   showNotes?: boolean;
-  scrapFields?: number; // Number of scrap fields to show (default 3)
-  valueScrapFields?: number; // Number of value scrap fields to show (default 3)
 }
 
 /**
@@ -36,8 +34,6 @@ const DEFAULT_CONFIG: PDFTemplateConfig = {
   showChargeMaterials: true,
   showISeries: true,
   showNotes: true,
-  scrapFields: 3,
-  valueScrapFields: 3,
 };
 
 /**
@@ -158,12 +154,6 @@ const generateMainSheetHTML = (
   const { date, time } = formatDateTime(checkIn.startedAt);
   const duration = calculateDuration(checkIn.startedAt, checkIn.finishedAt);
   
-  // Get scrap data (normal scrap from categories)
-  const scrapData = checkIn.categories.slice(0, config.scrapFields || 3);
-  
-  // Get value scrap data
-  const valueScrapData = checkIn.valueScrap.slice(0, config.valueScrapFields || 3);
-  
   // Calculate total for certificate of destruction
   const totalCategoryQuantity = checkIn.categories.reduce((total, item) => {
     const qty = parseFloat(item.quantity) || 0;
@@ -184,39 +174,39 @@ const generateMainSheetHTML = (
           
           body {
             font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-size: 11px;
             padding: 20px;
-            line-height: 1.4;
+            line-height: 1.3;
           }
           
           .header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border-bottom: 2px solid #000;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
           }
           
           .header h1 {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
           }
           
           .section {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
           }
           
           .section-title {
             font-weight: bold;
-            font-size: 13px;
-            margin-bottom: 8px;
+            font-size: 12px;
+            margin-bottom: 6px;
             text-decoration: underline;
           }
           
           .field-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             align-items: center;
           }
           
@@ -224,7 +214,7 @@ const generateMainSheetHTML = (
             display: flex;
             align-items: center;
             flex: 1;
-            margin-right: 15px;
+            margin-right: 12px;
           }
           
           .field:last-child {
@@ -240,19 +230,19 @@ const generateMainSheetHTML = (
           .field-value {
             border-bottom: 1px solid #000;
             flex: 1;
-            min-width: 100px;
-            padding: 2px 5px;
+            min-width: 80px;
+            padding: 1px 4px;
           }
           
           .full-width-field {
             display: flex;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
           }
           
           .full-width-field .field-label {
-            margin-right: 10px;
-            min-width: 120px;
+            margin-right: 8px;
+            min-width: 100px;
           }
           
           .full-width-field .field-value {
@@ -262,64 +252,90 @@ const generateMainSheetHTML = (
           .table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 8px;
+            margin-bottom: 8px;
           }
           
           .table th,
           .table td {
             border: 1px solid #000;
-            padding: 6px;
+            padding: 4px 6px;
             text-align: left;
           }
           
           .table th {
             background-color: #f0f0f0;
             font-weight: bold;
+            font-size: 11px;
           }
           
-          .scrap-section {
-            margin-top: 15px;
+          .table td {
+            font-size: 10px;
           }
           
-          .scrap-fields {
+          .table-total {
+            font-weight: bold;
+            background-color: #f8f8f8;
+          }
+          
+          .materials-section {
+            margin-top: 12px;
+          }
+          
+          .materials-title {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 8px;
+          }
+          
+          .materials-subtitle {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 6px;
+            font-style: italic;
+          }
+          
+          .material-item {
             display: flex;
             justify-content: space-between;
-            margin-top: 10px;
+            padding: 4px 8px;
+            margin-bottom: 3px;
+            border: 1px solid #ddd;
+            background-color: #fafafa;
           }
           
-          .scrap-field {
+          .material-name {
+            font-weight: 500;
             flex: 1;
-            margin-right: 15px;
           }
           
-          .scrap-field:last-child {
-            margin-right: 0;
+          .material-quantity {
+            font-weight: bold;
+            margin-left: 10px;
           }
           
-          .scrap-field-label {
-            font-weight: normal;
-            margin-bottom: 5px;
-          }
-          
-          .scrap-field-input {
+          .note-box {
             border: 1px solid #000;
             padding: 8px;
-            width: 100%;
-            min-height: 30px;
+            margin-top: 6px;
+            min-height: 40px;
+            background-color: #fafafa;
           }
           
-          .value-scrap-title {
+          .note-title {
             font-weight: bold;
-            font-size: 13px;
-            margin-top: 20px;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
           }
           
-          .note {
+          .note-content {
+            font-size: 10px;
+            white-space: pre-wrap;
+          }
+          
+          .empty-message {
             font-style: italic;
-            font-size: 11px;
-            color: #666;
-            margin-top: 5px;
+            color: #999;
+            font-size: 10px;
           }
         </style>
       </head>
@@ -334,21 +350,21 @@ const generateMainSheetHTML = (
           <div class="section">
             <div class="field-row">
               <div class="field">
-                <span class="field-label">Name</span>
+                <span class="field-label">Name:</span>
                 <span class="field-value">${escapeHtml(checkIn.employeeName)}</span>
               </div>
               <div class="field">
-                <span class="field-label">Date</span>
+                <span class="field-label">Date:</span>
                 <span class="field-value">${escapeHtml(date)}</span>
               </div>
               <div class="field">
-                <span class="field-label">Time</span>
+                <span class="field-label">Time:</span>
                 <span class="field-value">${escapeHtml(time)}</span>
               </div>
             </div>
             
             <div class="full-width-field">
-              <span class="field-label">Total Time Out and Back</span>
+              <span class="field-label">Total Time Out and Back:</span>
               <span class="field-value">${escapeHtml(checkIn.totalTime || duration)} Hours</span>
             </div>
           </div>
@@ -356,29 +372,29 @@ const generateMainSheetHTML = (
         
         <div class="section">
           <div class="full-width-field">
-            <span class="field-label">Company of Origin</span>
+            <span class="field-label">Company of Origin:</span>
             <span class="field-value">${escapeHtml(checkIn.companyName)}</span>
           </div>
           
           <div class="full-width-field">
-            <span class="field-label">Address</span>
+            <span class="field-label">Address:</span>
             <span class="field-value">${escapeHtml(checkIn.address)}</span>
           </div>
           
           <div class="field-row">
             <div class="field">
-              <span class="field-label">Contact Person</span>
+              <span class="field-label">Contact Person:</span>
               <span class="field-value">${escapeHtml(checkIn.contactPerson)}</span>
             </div>
           </div>
           
           <div class="field-row">
             <div class="field">
-              <span class="field-label">EMAIL</span>
+              <span class="field-label">EMAIL:</span>
               <span class="field-value">${escapeHtml(checkIn.email)}</span>
             </div>
             <div class="field">
-              <span class="field-label">PHONE</span>
+              <span class="field-label">PHONE:</span>
               <span class="field-value">${escapeHtml(checkIn.phone)}</span>
             </div>
           </div>
@@ -387,18 +403,16 @@ const generateMainSheetHTML = (
         <div class="section">
           <div class="section-title">Material Received:</div>
           
-          ${config.showCategories ? `
+          ${config.showCategories && checkIn.categories.length > 0 ? `
             <div>
-              <strong>Total Quantity for Certificate of Destruction by Category:</strong>
-              <span style="margin-left: 10px;">(e.g # of Laptops, # of PCs, etc.)</span>
-            </div>
-            
-            ${checkIn.categories.length > 0 ? `
+              <div class="materials-title">Total Quantity for Certificate of Destruction by Category:</div>
+              <div class="materials-subtitle">(e.g # of Laptops, # of PCs, etc.)</div>
+              
               <table class="table">
                 <thead>
                   <tr>
                     <th>Category</th>
-                    <th>Quantity</th>
+                    <th style="width: 100px;">Quantity</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -408,52 +422,36 @@ const generateMainSheetHTML = (
                       <td>${escapeHtml(item.quantity)}</td>
                     </tr>
                   `).join('')}
-                  <tr style="font-weight: bold;">
+                  <tr class="table-total">
                     <td>TOTAL</td>
                     <td>${totalCategoryQuantity}</td>
                   </tr>
                 </tbody>
               </table>
-            ` : '<p class="note">No categories recorded</p>'}
-          ` : ''}
-          
-          ${config.showScrap ? `
-            <div class="scrap-section">
-              <div class="note">
-                ANY I-SERIES PCs OR LAPTOPS NEED TO BE ADDED ON I-SERIES BREAKDOWN SHEET (SEE REVERSE)
-              </div>
-              
-              <div class="scrap-fields">
-                ${Array.from({ length: config.scrapFields || 3 }).map((_, index) => {
-                  const scrapItem = scrapData[index];
-                  return `
-                    <div class="scrap-field">
-                      <div class="scrap-field-label">Scrap ${index + 1}</div>
-                      <div class="scrap-field-input">
-                        ${scrapItem ? `${escapeHtml(scrapItem.quantity)} Lbs.` : '_____ Lbs.'}
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
             </div>
           ` : ''}
           
-          ${config.showValueScrap ? `
-            <div class="value-scrap-title">Value Scrap Below</div>
-            
-            <div class="scrap-fields">
-              ${Array.from({ length: config.valueScrapFields || 3 }).map((_, index) => {
-                const valueItem = valueScrapData[index];
-                return `
-                  <div class="scrap-field">
-                    <div class="scrap-field-label">Value Scrap ${index + 1}</div>
-                    <div class="scrap-field-input">
-                      ${valueItem ? `${escapeHtml(valueItem.materialName)}: ${escapeHtml(valueItem.quantity)} ${escapeHtml(valueItem.measurement)}` : '_____ Lbs.'}
-                    </div>
-                  </div>
-                `;
-              }).join('')}
+          ${config.showValueScrap && checkIn.valueScrap.length > 0 ? `
+            <div class="materials-section">
+              <div class="materials-title">Value Scrap Received:</div>
+              ${checkIn.valueScrap.map(item => `
+                <div class="material-item">
+                  <span class="material-name">${escapeHtml(item.materialName)}</span>
+                  <span class="material-quantity">${escapeHtml(item.quantity)} ${escapeHtml(item.measurement)}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          
+          ${config.showChargeMaterials && checkIn.chargeMaterials.length > 0 ? `
+            <div class="materials-section">
+              <div class="materials-title">Charge Materials Received:</div>
+              ${checkIn.chargeMaterials.map(item => `
+                <div class="material-item">
+                  <span class="material-name">${escapeHtml(item.materialName)}</span>
+                  <span class="material-quantity">${escapeHtml(item.quantity)} ${escapeHtml(item.measurement)}</span>
+                </div>
+              `).join('')}
             </div>
           ` : ''}
         </div>
@@ -462,18 +460,18 @@ const generateMainSheetHTML = (
           <div class="section">
             ${checkIn.suspectedValueNote ? `
               <div>
-                <strong>Suspected Value:</strong>
-                <div style="border: 1px solid #000; padding: 8px; margin-top: 5px;">
-                  ${escapeHtml(checkIn.suspectedValueNote)}
+                <div class="note-title">Suspected Value:</div>
+                <div class="note-box">
+                  <div class="note-content">${escapeHtml(checkIn.suspectedValueNote)}</div>
                 </div>
               </div>
             ` : ''}
             
             ${checkIn.otherNotes ? `
-              <div style="margin-top: 10px;">
-                <strong>Other Notes / Damages / Customer Requests:</strong>
-                <div style="border: 1px solid #000; padding: 8px; margin-top: 5px;">
-                  ${escapeHtml(checkIn.otherNotes)}
+              <div style="margin-top: ${checkIn.suspectedValueNote ? '10px' : '0'};">
+                <div class="note-title">Other Notes / Damages / Customer Requests:</div>
+                <div class="note-box">
+                  <div class="note-content">${escapeHtml(checkIn.otherNotes)}</div>
                 </div>
               </div>
             ` : ''}
@@ -509,93 +507,100 @@ const generateISeriesSheetHTML = (
           
           body {
             font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-size: 11px;
             padding: 20px;
-            line-height: 1.4;
+            line-height: 1.3;
           }
           
           .header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border-bottom: 2px solid #000;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
           }
           
           .header h1 {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
           }
           
           .section {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
           }
           
           .section-title {
             font-weight: bold;
-            font-size: 13px;
+            font-size: 12px;
             margin-bottom: 8px;
             text-decoration: underline;
           }
           
           .subsection-title {
             font-weight: bold;
-            font-size: 12px;
-            margin-top: 15px;
-            margin-bottom: 8px;
+            font-size: 11px;
+            margin-top: 12px;
+            margin-bottom: 6px;
           }
           
           .table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 6px;
+            margin-bottom: 10px;
           }
           
           .table th,
           .table td {
             border: 1px solid #000;
-            padding: 6px;
+            padding: 4px 6px;
             text-align: left;
           }
           
           .table th {
             background-color: #f0f0f0;
             font-weight: bold;
+            font-size: 11px;
+          }
+          
+          .table td {
+            font-size: 10px;
+          }
+          
+          .empty-message {
+            padding: 15px;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            font-size: 10px;
           }
           
           .note {
             font-style: italic;
-            font-size: 11px;
+            font-size: 10px;
             color: #666;
-            margin-top: 5px;
-          }
-          
-          .empty-message {
-            padding: 20px;
-            text-align: center;
-            color: #666;
-            font-style: italic;
+            margin-bottom: 8px;
           }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1>i-Series PCs and Laptops</h1>
+          <h1>i-Series / Ryzen PCs and Laptops Breakdown</h1>
         </div>
         
         <div class="section">
           <div class="section-title">Material Received:</div>
-          <p class="note">Put i-Series PCs here (Same format as above)</p>
+          <div class="note">ANY I-SERIES OR RYZEN PCs OR LAPTOPS NEED TO BE ADDED HERE</div>
           
           ${hasISeriesData ? `
-            <div class="subsection-title">PCs:</div>
             ${checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0 ? `
+              <div class="subsection-title">PCs:</div>
               <table class="table">
                 <thead>
                   <tr>
                     <th>Processor Series</th>
                     <th>Generation</th>
-                    <th>Quantity</th>
+                    <th style="width: 100px;">Quantity</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -608,16 +613,16 @@ const generateISeriesSheetHTML = (
                   `).join('')}
                 </tbody>
               </table>
-            ` : '<p class="empty-message">No i-Series PCs recorded</p>'}
+            ` : ''}
             
-            <div class="subsection-title">Laptops:</div>
             ${checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0 ? `
+              <div class="subsection-title">Laptops:</div>
               <table class="table">
                 <thead>
                   <tr>
                     <th>Processor Series</th>
                     <th>Generation</th>
-                    <th>Quantity</th>
+                    <th style="width: 100px;">Quantity</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -630,10 +635,10 @@ const generateISeriesSheetHTML = (
                   `).join('')}
                 </tbody>
               </table>
-            ` : '<p class="empty-message">No i-Series Laptops recorded</p>'}
+            ` : ''}
           ` : `
             <div class="empty-message">
-              No i-Series PCs or Laptops recorded for this check-in
+              No i-Series or Ryzen PCs or Laptops recorded for this check-in
             </div>
           `}
         </div>
@@ -660,6 +665,11 @@ export const generateCheckInPDF = async (
     // Generate i-Series sheet HTML
     const iSeriesSheetHTML = generateISeriesSheetHTML(checkIn, finalConfig);
     
+    // Determine if we need to show the i-Series page
+    const hasISeriesData = 
+      (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) ||
+      (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0);
+    
     // Combine both pages into a single HTML document
     const combinedHTML = `
       <!DOCTYPE html>
@@ -682,7 +692,7 @@ export const generateCheckInPDF = async (
             ${mainSheetHTML.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
           </div>
           
-          ${finalConfig.showISeries ? `
+          ${finalConfig.showISeries && hasISeriesData ? `
             <div>
               ${iSeriesSheetHTML.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
             </div>
@@ -777,6 +787,11 @@ export const generateMultipleCheckInsPDF = async (
         // Generate i-Series sheet HTML
         const iSeriesSheetHTML = generateISeriesSheetHTML(checkIn, finalConfig);
         
+        // Determine if we need to show the i-Series page
+        const hasISeriesData = 
+          (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) ||
+          (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0);
+        
         // Combine both pages into a single HTML document
         const combinedHTML = `
           <!DOCTYPE html>
@@ -799,7 +814,7 @@ export const generateMultipleCheckInsPDF = async (
                 ${mainSheetHTML.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
               </div>
               
-              ${finalConfig.showISeries ? `
+              ${finalConfig.showISeries && hasISeriesData ? `
                 <div>
                   ${iSeriesSheetHTML.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
                 </div>
