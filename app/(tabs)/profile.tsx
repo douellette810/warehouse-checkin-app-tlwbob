@@ -16,8 +16,8 @@ import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import api from '@/app/api/client';
 import { IconSymbol } from '@/components/IconSymbol';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+import { generateCheckInPDF, generateMultipleCheckInsPDF } from '@/utils/pdfGenerator';
+import { CheckInFormData } from '@/types/checkIn';
 
 type AdminSection = 'employees' | 'companies' | 'categories' | 'value-scrap' | 'charge-materials' | 'i-series' | 'check-ins';
 
@@ -324,152 +324,48 @@ export default function ProfileScreen() {
     return `${minutes} min ${seconds} sec`;
   };
 
-  const generateCheckInText = (checkIn: any) => {
-    const getTotalCategoryQuantity = () => {
-      if (!checkIn.categories || !Array.isArray(checkIn.categories)) return 0;
-      return checkIn.categories.reduce((total: number, item: any) => {
-        const qty = parseFloat(item.quantity) || 0;
-        return total + qty;
-      }, 0);
+  const convertCheckInToFormData = (checkIn: any): CheckInFormData => {
+    return {
+      employeeName: checkIn.employee_name || '',
+      startedAt: checkIn.started_at || null,
+      finishedAt: checkIn.finished_at || null,
+      totalTime: checkIn.total_time || '',
+      companyId: checkIn.company_id || '',
+      companyName: checkIn.company_name || '',
+      address: checkIn.address || '',
+      contactPerson: checkIn.contact_person || '',
+      email: checkIn.email || '',
+      phone: checkIn.phone || '',
+      categories: checkIn.categories || [],
+      valueScrap: checkIn.value_scrap || [],
+      chargeMaterials: checkIn.charge_materials || [],
+      valueScrapTotals: checkIn.value_scrap_totals || [],
+      chargeMaterialsTotals: checkIn.charge_materials_totals || [],
+      hasISeriesPcs: checkIn.has_i_series_pcs || false,
+      hasISeriesLaptops: checkIn.has_i_series_laptops || false,
+      iSeriesPcs: checkIn.i_series_pcs || [],
+      iSeriesLaptops: checkIn.i_series_laptops || [],
+      suspectedValueNote: checkIn.suspected_value_note || null,
+      otherNotes: checkIn.other_notes || null,
     };
-
-    let text = '═══════════════════════════════════════\n';
-    text += '        WAREHOUSE CHECK-IN REPORT\n';
-    text += '═══════════════════════════════════════\n\n';
-
-    text += '─────────────────────────────────────\n';
-    text += 'FORM TIMESTAMPS\n';
-    text += '─────────────────────────────────────\n';
-    text += `Started:  ${formatDateTime(checkIn.started_at)}\n`;
-    text += `Finished: ${formatDateTime(checkIn.finished_at)}\n`;
-    text += `Duration: ${calculateDuration(checkIn.started_at, checkIn.finished_at)}\n\n`;
-
-    text += '─────────────────────────────────────\n';
-    text += 'BASIC INFORMATION\n';
-    text += '─────────────────────────────────────\n';
-    text += `Employee:     ${checkIn.employee_name}\n`;
-    text += `Total Time:   ${checkIn.total_time} hrs\n`;
-    text += `Company:      ${checkIn.company_name}\n`;
-    text += `Address:      ${checkIn.address}\n`;
-    text += `Contact:      ${checkIn.contact_person}\n`;
-    text += `Email:        ${checkIn.email}\n`;
-    text += `Phone:        ${checkIn.phone}\n\n`;
-
-    text += '─────────────────────────────────────\n';
-    text += 'CERTIFICATE OF DESTRUCTION\n';
-    text += '─────────────────────────────────────\n';
-    if (checkIn.categories && Array.isArray(checkIn.categories) && checkIn.categories.length > 0) {
-      checkIn.categories.forEach((item: any) => {
-        text += `${item.category}: ${item.quantity}\n`;
-      });
-      text += `\nTOTAL: ${getTotalCategoryQuantity()}\n\n`;
-    } else {
-      text += 'No categories\n\n';
-    }
-
-    text += '─────────────────────────────────────\n';
-    text += 'VALUE SCRAP\n';
-    text += '─────────────────────────────────────\n';
-    if (checkIn.value_scrap && Array.isArray(checkIn.value_scrap) && checkIn.value_scrap.length > 0) {
-      checkIn.value_scrap.forEach((item: any) => {
-        text += `${item.materialName}: ${item.quantity} ${item.measurement}\n`;
-      });
-      if (checkIn.value_scrap_totals && Array.isArray(checkIn.value_scrap_totals) && checkIn.value_scrap_totals.length > 0) {
-        text += '\nTotals by Unit:\n';
-        checkIn.value_scrap_totals.forEach((total: any) => {
-          text += `  ${total.measurement}: ${total.total}\n`;
-        });
-      }
-      text += '\n';
-    } else {
-      text += 'No value scrap\n\n';
-    }
-
-    text += '─────────────────────────────────────\n';
-    text += 'CHARGE MATERIALS\n';
-    text += '─────────────────────────────────────\n';
-    if (checkIn.charge_materials && Array.isArray(checkIn.charge_materials) && checkIn.charge_materials.length > 0) {
-      checkIn.charge_materials.forEach((item: any) => {
-        text += `${item.materialName}: ${item.quantity} ${item.measurement}\n`;
-      });
-      if (checkIn.charge_materials_totals && Array.isArray(checkIn.charge_materials_totals) && checkIn.charge_materials_totals.length > 0) {
-        text += '\nTotals by Unit:\n';
-        checkIn.charge_materials_totals.forEach((total: any) => {
-          text += `  ${total.measurement}: ${total.total}\n`;
-        });
-      }
-      text += '\n';
-    } else {
-      text += 'No charge materials\n\n';
-    }
-
-    text += '─────────────────────────────────────\n';
-    text += 'i-SERIES / RYZEN\n';
-    text += '─────────────────────────────────────\n';
-    text += 'PCs:\n';
-    if (checkIn.i_series_pcs && Array.isArray(checkIn.i_series_pcs) && checkIn.i_series_pcs.length > 0) {
-      checkIn.i_series_pcs.forEach((item: any) => {
-        text += `  ${item.processorSeries} ${item.processorGeneration}: ${item.quantity}\n`;
-      });
-    } else {
-      text += '  None\n';
-    }
-    text += '\nLaptops:\n';
-    if (checkIn.i_series_laptops && Array.isArray(checkIn.i_series_laptops) && checkIn.i_series_laptops.length > 0) {
-      checkIn.i_series_laptops.forEach((item: any) => {
-        text += `  ${item.processorSeries} ${item.processorGeneration}: ${item.quantity}\n`;
-      });
-    } else {
-      text += '  None\n';
-    }
-    text += '\n';
-
-    text += '─────────────────────────────────────\n';
-    text += 'ADDITIONAL NOTES\n';
-    text += '─────────────────────────────────────\n';
-    text += `Suspected Value:\n${checkIn.suspected_value_note || 'None'}\n\n`;
-    text += `Other Notes / Damages / Customer Requests:\n${checkIn.other_notes || 'None'}\n\n`;
-
-    text += '═══════════════════════════════════════\n';
-    text += `Generated: ${new Date().toLocaleString('en-US')}\n`;
-    text += '═══════════════════════════════════════\n';
-
-    return text;
   };
 
   const handlePrintCheckIn = async () => {
     if (!selectedCheckIn) return;
 
     try {
-      const checkInText = generateCheckInText(selectedCheckIn);
-      const fileName = `check-in-${selectedCheckIn.company_name.replace(/[^a-z0-9]/gi, '_')}-${new Date().getTime()}.txt`;
-      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-
-      console.log('Saving check-in to:', fileUri);
-
-      await FileSystem.writeAsStringAsync(fileUri, checkInText, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-
-      console.log('File saved successfully');
-
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/plain',
-          dialogTitle: 'Share Check-In Report',
-          UTI: 'public.plain-text',
-        });
-        console.log('File shared successfully');
-      } else {
-        Alert.alert(
-          'File Saved',
-          `Check-in report saved to:\n${fileUri}\n\nYou can find it in your device's file manager.`
-        );
-      }
+      setLoading(true);
+      console.log('Generating PDF for check-in:', selectedCheckIn.company_name);
+      
+      const formData = convertCheckInToFormData(selectedCheckIn);
+      await generateCheckInPDF(formData);
+      
+      console.log('PDF generated and shared successfully');
     } catch (error) {
-      console.error('Error sharing check-in:', error);
-      Alert.alert('Error', 'Failed to share check-in. Please try again.');
+      console.error('Error generating PDF:', error);
+      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -481,47 +377,18 @@ export default function ProfileScreen() {
     }
 
     try {
-      let allCheckInsText = '═══════════════════════════════════════\n';
-      allCheckInsText += '   ALL WAREHOUSE CHECK-IN REPORTS\n';
-      allCheckInsText += '═══════════════════════════════════════\n\n';
-      allCheckInsText += `Total Check-Ins: ${checkIns.length}\n`;
-      allCheckInsText += `Generated: ${new Date().toLocaleString('en-US')}\n\n`;
-
-      checkIns.forEach((checkIn, index) => {
-        allCheckInsText += `\n\n${'═'.repeat(39)}\n`;
-        allCheckInsText += `CHECK-IN #${index + 1}\n`;
-        allCheckInsText += `${'═'.repeat(39)}\n\n`;
-        allCheckInsText += generateCheckInText(checkIn);
-      });
-
-      const fileName = `all-check-ins-${new Date().getTime()}.txt`;
-      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-
-      console.log('Saving all check-ins to:', fileUri);
-
-      await FileSystem.writeAsStringAsync(fileUri, allCheckInsText, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-
-      console.log('File saved successfully');
-
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/plain',
-          dialogTitle: 'Share All Check-In Reports',
-          UTI: 'public.plain-text',
-        });
-        console.log('File shared successfully');
-      } else {
-        Alert.alert(
-          'File Saved',
-          `All check-in reports saved to:\n${fileUri}\n\nYou can find it in your device's file manager.`
-        );
-      }
+      setLoading(true);
+      console.log(`Generating PDF for ${checkIns.length} check-ins`);
+      
+      const formDataArray = checkIns.map(convertCheckInToFormData);
+      await generateMultipleCheckInsPDF(formDataArray);
+      
+      console.log('Combined PDF generated and shared successfully');
     } catch (error) {
-      console.error('Error sharing all check-ins:', error);
-      Alert.alert('Error', 'Failed to share check-ins. Please try again.');
+      console.error('Error generating combined PDF:', error);
+      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -826,14 +693,24 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.shareButton} onPress={handlePrintCheckIn}>
-          <IconSymbol
-            ios_icon_name="square.and.arrow.up.fill"
-            android_material_icon_name="share"
-            size={20}
-            color="#FFFFFF"
-          />
-          <Text style={styles.shareButtonText}>Share / Print This Check-In</Text>
+        <TouchableOpacity 
+          style={[styles.shareButton, loading && styles.shareButtonDisabled]} 
+          onPress={handlePrintCheckIn}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <React.Fragment>
+              <IconSymbol
+                ios_icon_name="doc.fill"
+                android_material_icon_name="picture_as_pdf"
+                size={20}
+                color="#FFFFFF"
+              />
+              <Text style={styles.shareButtonText}>Export as PDF</Text>
+            </React.Fragment>
+          )}
         </TouchableOpacity>
       </ScrollView>
     );
@@ -1060,16 +937,23 @@ export default function ProfileScreen() {
           <View style={styles.accordionContent}>
             {section === 'check-ins' && sectionData.length > 0 && (
               <TouchableOpacity
-                style={styles.shareAllButton}
+                style={[styles.shareAllButton, loading && styles.shareAllButtonDisabled]}
                 onPress={handleShareAllCheckIns}
+                disabled={loading}
               >
-                <IconSymbol
-                  ios_icon_name="square.and.arrow.up.fill"
-                  android_material_icon_name="share"
-                  size={20}
-                  color="#FFFFFF"
-                />
-                <Text style={styles.shareAllButtonText}>Share / Print All</Text>
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <React.Fragment>
+                    <IconSymbol
+                      ios_icon_name="doc.fill"
+                      android_material_icon_name="picture_as_pdf"
+                      size={20}
+                      color="#FFFFFF"
+                    />
+                    <Text style={styles.shareAllButtonText}>Export All as PDF</Text>
+                  </React.Fragment>
+                )}
               </TouchableOpacity>
             )}
 
@@ -1112,7 +996,7 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Admin Panel</Text>
-        <Text style={styles.headerSubtitle}>Manage/Edit Warehouse Data and View/Print Check-Ins</Text>
+        <Text style={styles.headerSubtitle}>Manage/Edit Warehouse Data and Export Check-Ins as PDF</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -1371,6 +1255,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginLeft: 8,
   },
+  shareAllButtonDisabled: {
+    backgroundColor: colors.disabled,
+  },
   shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1386,6 +1273,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     marginLeft: 8,
+  },
+  shareButtonDisabled: {
+    backgroundColor: colors.disabled,
   },
   emptyText: {
     fontSize: 14,
