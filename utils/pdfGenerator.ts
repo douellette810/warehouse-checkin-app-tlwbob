@@ -2,6 +2,8 @@
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { CheckInFormData } from '@/types/checkIn';
+import { Directory, File, Paths } from 'expo-file-system';
+import { Alert } from 'react-native';
 
 /**
  * PDF Template Configuration
@@ -58,6 +60,44 @@ const formatDateTime = (dateString: string | null): { date: string; time: string
   });
   
   return { date: dateStr, time: timeStr };
+};
+
+/**
+ * Format date for filename (MM-DD-YYYY)
+ */
+const formatDateForFilename = (dateString: string | null): string => {
+  if (!dateString) {
+    const now = new Date();
+    return now.toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+    }).replace(/\//g, '-');
+  }
+  
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+  }).replace(/\//g, '-');
+};
+
+/**
+ * Sanitize filename to remove invalid characters
+ */
+const sanitizeFilename = (filename: string): string => {
+  return filename.replace(/[^a-z0-9\s\-_()]/gi, '').replace(/\s+/g, ' ').trim();
+};
+
+/**
+ * Generate filename based on company name and date
+ * Format: "(Company Name) Check-In Sheet (Date).pdf"
+ */
+const generateFilename = (checkIn: CheckInFormData): string => {
+  const companyName = sanitizeFilename(checkIn.companyName || 'Unknown Company');
+  const date = formatDateForFilename(checkIn.startedAt);
+  return `${companyName} Check-In Sheet ${date}.pdf`;
 };
 
 /**
@@ -623,16 +663,17 @@ export const generateCheckInPDF = async (
     
     console.log('PDF generated successfully:', uri);
     
-    // Share the PDF
-    const fileName = `check-in-${checkIn.companyName.replace(/[^a-z0-9]/gi, '_')}-${new Date().getTime()}.pdf`;
+    // Generate filename with proper format
+    const fileName = generateFilename(checkIn);
     
+    // Share the PDF with the proper filename
     await shareAsync(uri, {
       mimeType: 'application/pdf',
-      dialogTitle: 'Share Check-In PDF',
+      dialogTitle: `Share ${fileName}`,
       UTI: 'com.adobe.pdf',
     });
     
-    console.log('PDF shared successfully');
+    console.log('PDF shared successfully:', fileName);
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw error;
@@ -650,7 +691,8 @@ export const generateCustomCheckInPDF = async (
 };
 
 /**
- * Generate a combined PDF for multiple check-ins
+ * Generate individual PDFs for multiple check-ins
+ * Each check-in will be exported as a separate PDF file
  */
 export const generateMultipleCheckInsPDF = async (
   checkIns: CheckInFormData[],
@@ -659,68 +701,173 @@ export const generateMultipleCheckInsPDF = async (
   try {
     const finalConfig = { ...DEFAULT_CONFIG, ...config };
     
-    console.log(`Generating PDF for ${checkIns.length} check-ins`);
+    console.log(`Generating ${checkIns.length} individual PDFs`);
     
-    // Generate HTML for each check-in
-    const checkInPages = checkIns.map((checkIn, index) => {
-      const mainSheet = generateMainSheetHTML(checkIn, finalConfig);
-      const iSeriesSheet = generateISeriesSheetHTML(checkIn, finalConfig);
+    if (checkIns.length === 0) {
+      Alert.alert('No Check-Ins', 'There are no check-ins to export.');
+      return;
+    }
+    
+    // Create a temporary directory to store all PDFs
+    const tempDir = new Directory(Paths.cache, 'check-in-exports');
+    
+    try {
+      // Create the directory if it doesn't exist
+      if (!tempDir.exists) {
+        tempDir.create();
+      }
+    } catch (error) {
+      console.log('Directory already exists or error creating:', error);
+    }
+    
+    // Generate individual PDFs
+    const generatedFiles: File[] = [];
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (let i = 0; i < checkIns.length; i++) {
+      const checkIn = checkIns[i];
       
-      return `
-        <div class="page-break">
-          ${mainSheet.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
-        </div>
+      try {
+        console.log(`Generating PDF ${i + 1}/${checkIns.length}: ${checkIn.companyName}`);
         
-        ${finalConfig.showISeries ? `
-          <div class="page-break">
-            ${iSeriesSheet.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
-          </div>
-        ` : ''}
-      `;
-    }).join('');
+        // Generate main sheet HTML
+        const mainSheetHTML = generateMainSheetHTML(checkIn, finalConfig);
+        
+        // Generate i-Series sheet HTML
+        const iSeriesSheetHTML = generateISeriesSheetHTML(checkIn, finalConfig);
+        
+        // Combine both pages into a single HTML document
+        const combinedHTML = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+              <style>
+                @page {
+                  size: letter;
+                  margin: 0.5in;
+                }
+                
+                .page-break {
+                  page-break-after: always;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="page-break">
+                ${mainSheetHTML.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
+              </div>
+              
+              ${finalConfig.showISeries ? `
+                <div>
+                  ${iSeriesSheetHTML.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
+                </div>
+              ` : ''}
+            </body>
+          </html>
+        `;
+        
+        // Generate PDF
+        const { uri } = await Print.printToFileAsync({
+          html: combinedHTML,
+        });
+        
+        // Generate filename with proper format
+        const fileName = generateFilename(checkIn);
+        
+        // Copy the PDF to our temp directory with the proper filename
+        const destinationFile = new File(tempDir, fileName);
+        const sourceFile = new File(uri);
+        
+        try {
+          sourceFile.copy(destinationFile);
+          generatedFiles.push(destinationFile);
+          successCount++;
+          console.log(`Successfully generated: ${fileName}`);
+        } catch (copyError) {
+          console.error(`Error copying file ${fileName}:`, copyError);
+          failCount++;
+        }
+        
+      } catch (error) {
+        console.error(`Error generating PDF for ${checkIn.companyName}:`, error);
+        failCount++;
+      }
+    }
     
-    // Combine all pages
-    const combinedHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-          <style>
-            @page {
-              size: letter;
-              margin: 0.5in;
+    console.log(`PDF generation complete. Success: ${successCount}, Failed: ${failCount}`);
+    
+    if (generatedFiles.length === 0) {
+      Alert.alert(
+        'Export Failed',
+        'Failed to generate any PDFs. Please try again.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    // Share the first file (this will open the share dialog)
+    // Note: On mobile, we can only share one file at a time with expo-sharing
+    // For multiple files, we would need to zip them or use a different approach
+    if (generatedFiles.length === 1) {
+      await shareAsync(generatedFiles[0].uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: 'Share Check-In PDF',
+        UTI: 'com.adobe.pdf',
+      });
+      
+      Alert.alert(
+        'Export Complete',
+        `Successfully exported 1 PDF file.`,
+        [{ text: 'OK' }]
+      );
+    } else {
+      // For multiple files, share the first one and inform the user
+      await shareAsync(generatedFiles[0].uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: 'Share Check-In PDFs',
+        UTI: 'com.adobe.pdf',
+      });
+      
+      Alert.alert(
+        'Export Complete',
+        `Successfully exported ${successCount} PDF files.\n\n` +
+        `Note: Due to platform limitations, files are being shared one at a time. ` +
+        `The files are saved in:\n${tempDir.uri}\n\n` +
+        `You can find all exported PDFs in your device's file manager.`,
+        [
+          {
+            text: 'Share Next',
+            onPress: async () => {
+              // Share remaining files one by one
+              for (let i = 1; i < generatedFiles.length; i++) {
+                try {
+                  await shareAsync(generatedFiles[i].uri, {
+                    mimeType: 'application/pdf',
+                    dialogTitle: `Share Check-In PDF (${i + 1}/${generatedFiles.length})`,
+                    UTI: 'com.adobe.pdf',
+                  });
+                } catch (error) {
+                  console.error(`Error sharing file ${i + 1}:`, error);
+                }
+              }
             }
-            
-            .page-break {
-              page-break-after: always;
-            }
-          </style>
-        </head>
-        <body>
-          ${checkInPages}
-        </body>
-      </html>
-    `;
+          },
+          { text: 'Done', style: 'cancel' }
+        ]
+      );
+    }
     
-    // Generate PDF
-    const { uri } = await Print.printToFileAsync({
-      html: combinedHTML,
-    });
+    console.log('All PDFs shared successfully');
     
-    console.log('Combined PDF generated successfully:', uri);
-    
-    // Share the PDF
-    const fileName = `all-check-ins-${new Date().getTime()}.pdf`;
-    
-    await shareAsync(uri, {
-      mimeType: 'application/pdf',
-      dialogTitle: 'Share All Check-Ins PDF',
-      UTI: 'com.adobe.pdf',
-    });
-    
-    console.log('Combined PDF shared successfully');
   } catch (error) {
-    console.error('Error generating combined PDF:', error);
+    console.error('Error generating multiple PDFs:', error);
+    Alert.alert(
+      'Export Error',
+      'An error occurred while exporting PDFs. Please try again.',
+      [{ text: 'OK' }]
+    );
     throw error;
   }
 };
