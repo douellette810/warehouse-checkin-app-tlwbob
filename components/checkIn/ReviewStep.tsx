@@ -148,7 +148,7 @@ export default function ReviewStep({
         ) : (
           <React.Fragment>
             {formData.categories.map((item, index) => (
-              <View key={index} style={styles.infoRow}>
+              <View key={`category-${index}`} style={styles.infoRow}>
                 <Text style={styles.infoLabel}>{item.category}:</Text>
                 <Text style={styles.infoValue}>{item.quantity}</Text>
               </View>
@@ -182,7 +182,7 @@ export default function ReviewStep({
         ) : (
           <React.Fragment>
             {formData.valueScrap.map((item, index) => (
-              <View key={index} style={styles.infoRow}>
+              <View key={`value-scrap-${index}`} style={styles.infoRow}>
                 <Text style={styles.infoLabel}>{item.materialName}:</Text>
                 <Text style={styles.infoValue}>
                   {item.quantity} {item.measurement}
@@ -193,7 +193,7 @@ export default function ReviewStep({
               <View style={styles.totalsSection}>
                 <Text style={styles.totalsTitle}>Totals by Unit:</Text>
                 {formData.valueScrapTotals.map((total, index) => (
-                  <View key={index} style={styles.totalRow}>
+                  <View key={`value-scrap-total-${index}`} style={styles.totalRow}>
                     <Text style={styles.totalLabel}>{total.measurement}:</Text>
                     <Text style={styles.totalValue}>{total.total}</Text>
                   </View>
@@ -225,7 +225,7 @@ export default function ReviewStep({
         ) : (
           <React.Fragment>
             {formData.chargeMaterials.map((item, index) => (
-              <View key={index} style={styles.infoRow}>
+              <View key={`charge-material-${index}`} style={styles.infoRow}>
                 <Text style={styles.infoLabel}>{item.materialName}:</Text>
                 <Text style={styles.infoValue}>
                   {item.quantity} {item.measurement}
@@ -236,7 +236,7 @@ export default function ReviewStep({
               <View style={styles.totalsSection}>
                 <Text style={styles.totalsTitle}>Totals by Unit:</Text>
                 {formData.chargeMaterialsTotals.map((total, index) => (
-                  <View key={index} style={styles.totalRow}>
+                  <View key={`charge-material-total-${index}`} style={styles.totalRow}>
                     <Text style={styles.totalLabel}>{total.measurement}:</Text>
                     <Text style={styles.totalValue}>{total.total}</Text>
                   </View>
@@ -269,14 +269,16 @@ export default function ReviewStep({
           {formData.hasISeriesPcs === false || formData.iSeriesPcs.length === 0 ? (
             <Text style={styles.emptyText}>None</Text>
           ) : (
-            formData.iSeriesPcs.map((item, index) => (
-              <View key={index} style={styles.infoRow}>
-                <Text style={styles.infoLabel}>
-                  {item.processorSeries} {item.processorGeneration}:
-                </Text>
-                <Text style={styles.infoValue}>{item.quantity}</Text>
-              </View>
-            ))
+            <React.Fragment>
+              {formData.iSeriesPcs.map((item, index) => (
+                <View key={`i-series-pc-${index}`} style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>
+                    {item.processorSeries} {item.processorGeneration}:
+                  </Text>
+                  <Text style={styles.infoValue}>{item.quantity}</Text>
+                </View>
+              ))}
+            </React.Fragment>
           )}
         </View>
 
@@ -285,14 +287,16 @@ export default function ReviewStep({
           {formData.hasISeriesLaptops === false || formData.iSeriesLaptops.length === 0 ? (
             <Text style={styles.emptyText}>None</Text>
           ) : (
-            formData.iSeriesLaptops.map((item, index) => (
-              <View key={index} style={styles.infoRow}>
-                <Text style={styles.infoLabel}>
-                  {item.processorSeries} {item.processorGeneration}:
-                </Text>
-                <Text style={styles.infoValue}>{item.quantity}</Text>
-              </View>
-            ))
+            <React.Fragment>
+              {formData.iSeriesLaptops.map((item, index) => (
+                <View key={`i-series-laptop-${index}`} style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>
+                    {item.processorSeries} {item.processorGeneration}:
+                  </Text>
+                  <Text style={styles.infoValue}>{item.quantity}</Text>
+                </View>
+              ))}
+            </React.Fragment>
           )}
         </View>
       </View>
