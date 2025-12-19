@@ -182,60 +182,64 @@ const getDefaultTemplate = (): string => {
   <style type="text/css">
     p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: center; font: 21.3px Helvetica; -webkit-text-stroke: #000000}
     p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: center; font: 16.0px Helvetica; -webkit-text-stroke: #000000}
-    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; font: 16.0px Helvetica; -webkit-text-stroke: #000000}
-    p.p4 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: center; font: 16.0px Helvetica; -webkit-text-stroke: #000000; min-height: 19.0px}
+    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: center; font: 16.0px Helvetica; -webkit-text-stroke: #000000; min-height: 19.0px}
+    p.p4 {margin: 0.0px 0.0px 0.0px 0.0px; font: 16.0px Helvetica; -webkit-text-stroke: #000000}
     p.p5 {margin: 0.0px 0.0px 0.0px 0.0px; font: 16.0px Helvetica; -webkit-text-stroke: #000000; min-height: 19.0px}
     p.p6 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: justify; font: 16.0px Helvetica; -webkit-text-stroke: #000000}
     p.p7 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: justify; font: 16.0px Helvetica; -webkit-text-stroke: #000000; min-height: 19.0px}
     p.p8 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: justify; font: 21.3px Helvetica; -webkit-text-stroke: #000000}
     span.s1 {font-kerning: none}
-    span.s2 {font: 21.3px Helvetica; font-kerning: none}
     span.Apple-tab-span {white-space:pre}
   </style>
 </head>
 <body>
 <p class="p1"><span class="s1"><b>Circuitry Solutions Warehouse Receiving Receipt</b><b></b></span></p>
 <p class="p2"><span class="s1"> </span></p>
-<p class="p2"><span class="s1">Name_____________________        Date _________          Time________ Total Time Out and Back ______________Hours</span></p>
+<p class="p2"><span class="s1">Name_____________________        <span class="Apple-converted-space">  </span>Date _________          Time________ <span class="Apple-converted-space">          </span>Total Time Out and Back ______________Hours</span></p>
 <p class="p2"><span class="s1"> </span></p>
 <p class="p2"><span class="s1">Company of Origin: ________________________________________________________</span></p>
+<p class="p3"><span class="s1"></span><br></p>
 <p class="p2"><span class="s1">Address: _________________________________________________________________</span></p>
+<p class="p3"><span class="s1"></span><br></p>
 <p class="p2"><span class="s1">Contact Person: _____________________     EMAIL: ______________________________</span></p>
-<p class="p2"><span class="s1">                                                                        PHONE: ______________________________</span></p>
-<p class="p3"><span class="s1"><b>Material Received:</b><b></b></span></p>
-<p class="p3"><span class="s1"> </span></p>
-<p class="p3"><span class="s1">Total Quantity for Certificate of Destruction by Category: (e.g # of Laptops, # of PCs, etc.)<span class="Apple-converted-space"> </span></span></p>
-<p class="p4"><span class="s1"></span><br></p>
+<p class="p3"><span class="s1"></span><br></p>
+<p class="p2"><span class="s1">                                                                       <span class="Apple-converted-space">    </span>PHONE: ______________________________</span></p>
+<p class="p4"><span class="s1"><b>Material Received:</b></span></p>
+<p class="p5"><span class="s1"></span><br></p>
+<p class="p4"><span class="s1"> </span></p>
+<p class="p4"><span class="s1">Total Quantity for Certificate of Destruction by Category: (e.g # of Laptops, # of PCs, etc.)<span class="Apple-converted-space"> </span></span></p>
+<p class="p3"><span class="s1"></span><br></p>
 <p class="p2"><span class="s1">_____________________________________________________________________________________________________________________________________________</span></p>
-<p class="p4"><span class="s1"></span><br></p>
-<p class="p4"><span class="s1"></span><br></p>
-<p class="p1"><span class="s2"><b>Value Scrap</b><b></b></span></p>
-<p class="p3"><span class="s1"> <span class="Apple-tab-span">	</span><span class="Apple-tab-span">	</span><span class="Apple-tab-span">	</span><span class="Apple-tab-span">	</span></span></p>
-<p class="p3"><span class="s1"> </span></p>
-<p class="p3"><span class="s1">Example Entry _________ Lbs.</span></p>
+<p class="p3"><span class="s1"></span><br></p>
+<p class="p3"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><b>Value Scrap</b><b></b></span></p>
+<p class="p4"><span class="s1"> <span class="Apple-tab-span">	</span><span class="Apple-tab-span">	</span><span class="Apple-tab-span">	</span><span class="Apple-tab-span">	</span></span></p>
+<p class="p4"><span class="s1"> </span></p>
+<p class="p4"><span class="s1">Example Entry: _________ Lbs.</span></p>
 <p class="p5"><span class="s1"><span class="Apple-tab-span">	</span></span></p>
-<p class="p3"><span class="s1">Example Entry ______________ Pcs.</span></p>
+<p class="p4"><span class="s1">Example Entry: ______________ Pcs.</span></p>
 <p class="p5"><span class="s1"></span><br></p>
-<p class="p3"><span class="s1">Example Entry _________ Lbs.</span></p>
-<p class="p3"><span class="s1"> </span></p>
-<p class="p3"><span class="s1">Example Entry ____________ Lbs.</span></p>
+<p class="p4"><span class="s1">Example Entry: _________ Lbs.</span></p>
+<p class="p4"><span class="s1"> </span></p>
+<p class="p4"><span class="s1">Example Entry: ____________ Lbs.</span></p>
 <p class="p5"><span class="s1"></span><br></p>
-<p class="p6"><span class="s1">Example Entry______________ Pcs.</span></p>
+<p class="p6"><span class="s1">Example Entry: ______________ Pcs.</span></p>
 <p class="p7"><span class="s1"></span><br></p>
-<p class="p6"><span class="s1">Example Entry _______ Lbs.</span></p>
+<p class="p6"><span class="s1">Example Entry: _______ Lbs.</span></p>
 <p class="p8"><span class="s1"><b> </b><b></b></span></p>
 <p class="p1"><span class="s1"><b> </b><b></b></span></p>
 <p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b><b></b></span></p>
 <p class="p2"><span class="s1"> </span></p>
-<p class="p3"><span class="s1"><b>Material Received:</b><b></b></span></p>
-<p class="p3"><span class="s1"> </span></p>
-<p class="p3"><span class="s1">Example Entry _________ Pcs.</span></p>
+<p class="p4"><span class="s1"><b>Material Received:</b></span></p>
 <p class="p5"><span class="s1"></span><br></p>
-<p class="p3"><span class="s1">Example Entry _________ Pcs.</span></p>
+<p class="p4"><span class="s1"> </span></p>
+<p class="p4"><span class="s1">Example Entry: _________ Pcs.</span></p>
 <p class="p5"><span class="s1"></span><br></p>
-<p class="p3"><span class="s1">Example Entry _________ Pcs.</span></p>
-<p class="p3"><span class="s1"><b> </b><b></b></span></p>
-<p class="p3"><span class="s1"> </span></p>
+<p class="p4"><span class="s1">Example Entry: _________ Pcs.</span></p>
+<p class="p5"><span class="s1"></span><br></p>
+<p class="p4"><span class="s1">Example Entry: _________ Pcs.</span></p>
+<p class="p4"><span class="s1"><b> </b><b></b></span></p>
+<p class="p4"><span class="s1"> </span></p>
 </body>
 </html>`;
 };
@@ -271,81 +275,71 @@ const generateHTMLFromTemplate = async (
     const { date, time } = formatDateTime(checkIn.startedAt);
     const duration = calculateDuration(checkIn.startedAt, checkIn.finishedAt);
     
-    // Replace basic info line - use non-breaking spaces for better spacing
+    // Replace basic info line - preserve exact spacing from template
     const nameValue = escapeHtml(checkIn.employeeName) || '';
     const dateValue = escapeHtml(date) || '';
     const timeValue = escapeHtml(time) || '';
     const totalTimeValue = escapeHtml(checkIn.totalTime || duration) || '';
     
-    // Build the info line with proper spacing using &nbsp; (non-breaking spaces)
-    const infoLine = `Name ${nameValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Date ${dateValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Time ${timeValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Total Time Out and Back ${totalTimeValue}`;
+    // Build the info line with proper spacing matching the template structure
+    const infoLine = `Name ${nameValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;        <span class="Apple-converted-space">  </span>Date ${dateValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;          Time ${timeValue} <span class="Apple-converted-space">          </span>Total Time Out and Back ${totalTimeValue}`;
     
     html = html.replace(
-      /Name_____________________\s+Date _________\s+Time________\s+Total Time Out and Back ______________Hours/,
+      /Name_____________________\s+<span class="Apple-converted-space">\s+<\/span>Date _________\s+Time________\s+<span class="Apple-converted-space">\s+<\/span>Total Time Out and Back ______________Hours/,
       infoLine
     );
     
-    // Add double spacing after the first info line (add extra <p> tags)
-    html = html.replace(
-      /<p class="p2"><span class="s1"> <\/span><\/p>\s*<p class="p2"><span class="s1">Company of Origin:/,
-      '<p class="p2"><span class="s1"> </span></p>\n<p class="p2"><span class="s1"> </span></p>\n<p class="p2"><span class="s1">Company of Origin:'
-    );
-    
-    // Replace company info with double spacing between lines
+    // Replace company info - PRESERVE the empty <p> tags for double spacing
     html = html.replace(
       /Company of Origin: ________________________________________________________/,
       `Company of Origin: ${escapeHtml(checkIn.companyName)}`
     );
     
+    // Replace address - keep the <p class="p3"> empty line before it
     html = html.replace(
-      /<p class="p2"><span class="s1">Address: _________________________________________________________________<\/span><\/p>/,
-      `<p class="p2"><span class="s1"> </span></p>\n<p class="p2"><span class="s1">Address: ${escapeHtml(checkIn.address)}</span></p>`
+      /Address: _________________________________________________________________/,
+      `Address: ${escapeHtml(checkIn.address)}`
     );
     
+    // Replace contact person and email - keep the <p class="p3"> empty line before it
     html = html.replace(
-      /<p class="p2"><span class="s1">Contact Person: _____________________\s+EMAIL: ______________________________<\/span><\/p>/,
-      `<p class="p2"><span class="s1"> </span></p>\n<p class="p2"><span class="s1">Contact Person: ${escapeHtml(checkIn.contactPerson)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EMAIL: ${escapeHtml(checkIn.email)}</span></p>`
+      /Contact Person: _____________________\s+EMAIL: ______________________________/,
+      `Contact Person: ${escapeHtml(checkIn.contactPerson)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EMAIL: ${escapeHtml(checkIn.email)}`
     );
     
+    // Replace phone - keep the <p class="p3"> empty line before it
     html = html.replace(
-      /<p class="p2"><span class="s1">\s+PHONE: ______________________________<\/span><\/p>/,
-      `<p class="p2"><span class="s1"> </span></p>\n<p class="p2"><span class="s1">                                                                        PHONE: ${escapeHtml(checkIn.phone)}</span></p>`
+      /<span class="Apple-converted-space">\s+<\/span>PHONE: ______________________________/,
+      `<span class="Apple-converted-space">    </span>PHONE: ${escapeHtml(checkIn.phone)}`
     );
     
-    // Add new line after "Material Received:" and before "Total Quantity for Certificate of Destruction"
-    html = html.replace(
-      /<p class="p3"><span class="s1"><b>Material Received:<\/b><b><\/b><\/span><\/p>\s*<p class="p3"><span class="s1"> <\/span><\/p>\s*<p class="p3"><span class="s1">Total Quantity for Certificate of Destruction/,
-      '<p class="p3"><span class="s1"><b>Material Received:</b><b></b></span></p>\n<p class="p3"><span class="s1"> </span></p>\n<p class="p3"><span class="s1"> </span></p>\n<p class="p3"><span class="s1">Total Quantity for Certificate of Destruction'
-    );
-    
-    // Replace categories section with natural formatting and bold/centered "Total Quantity" line
+    // Replace categories section - preserve the empty lines and formatting
     if (checkIn.categories && checkIn.categories.length > 0) {
       const categoriesText = formatCategoriesNaturally(checkIn.categories);
       
-      // Replace the line with bold and centered formatting
+      // Replace the underline with the categories text, keeping it centered and bold
       html = html.replace(
         /_____________________________________________________________________________________________________________________________________________/,
-        `</span></p>\n<p class="p2"><span class="s1"><b>${categoriesText}</b>`
+        `<b>${categoriesText}</b>`
       );
     }
     
-    // Replace Value Scrap section
+    // Replace Value Scrap section - preserve spacing structure
     console.log('Processing Value Scrap section, items:', checkIn.valueScrap?.length || 0);
     
     if (checkIn.valueScrap && checkIn.valueScrap.length > 0) {
-      // Build the new Value Scrap entries HTML
+      // Build the new Value Scrap entries HTML with proper spacing
       let valueScrapEntriesHTML = '';
       
       checkIn.valueScrap.forEach((item, index) => {
         console.log(`Value Scrap item ${index}:`, item.materialName, item.quantity, item.measurement);
         
-        // Create entry with proper spacing between name and measurement
-        // Use &nbsp; for spacing to ensure it renders properly
-        const entryText = `${escapeHtml(item.materialName)} ${escapeHtml(item.quantity)}&nbsp;${escapeHtml(item.measurement)}.`;
+        // Create entry matching the template format
+        const entryText = `${escapeHtml(item.materialName)}: ${escapeHtml(item.quantity)}&nbsp;${escapeHtml(item.measurement)}.`;
         
-        valueScrapEntriesHTML += `<p class="p3"><span class="s1">${entryText}</span></p>\n`;
+        valueScrapEntriesHTML += `<p class="p4"><span class="s1">${entryText}</span></p>\n`;
         
-        // Add spacing line between entries (except after the last one)
+        // Add empty line between entries (p5 class with min-height for spacing)
         if (index < checkIn.valueScrap.length - 1) {
           valueScrapEntriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
         }
@@ -354,32 +348,19 @@ const generateHTMLFromTemplate = async (
       console.log('Generated Value Scrap HTML length:', valueScrapEntriesHTML.length);
       
       // Find and replace the example entries in the Value Scrap section
-      // We need to replace from the first "Example Entry" to just before "i-Series PCs and Laptops"
-      const valueScrapStartMarker = '<p class="p3"><span class="s1">Example Entry';
-      const valueScrapEndMarker = '<p class="p8"><span class="s1"><b> </b><b></b></span></p>';
+      // Match from first "Example Entry" to the empty bold line before i-Series
+      const valueScrapPattern = /<p class="p4"><span class="s1">Example Entry: _________ Lbs\.<\/span><\/p>[\s\S]*?<p class="p8"><span class="s1"><b> <\/b><b><\/b><\/span><\/p>/;
       
-      const startIndex = html.indexOf(valueScrapStartMarker);
-      const endIndex = html.indexOf(valueScrapEndMarker);
-      
-      if (startIndex !== -1 && endIndex !== -1) {
-        console.log('Found Value Scrap section markers');
-        const beforeSection = html.substring(0, startIndex);
-        const afterSection = html.substring(endIndex);
-        
-        html = beforeSection + valueScrapEntriesHTML + afterSection;
+      if (valueScrapPattern.test(html)) {
+        console.log('Found Value Scrap section, replacing...');
+        html = html.replace(valueScrapPattern, valueScrapEntriesHTML + '<p class="p8"><span class="s1"><b> </b><b></b></span></p>');
         console.log('Replaced Value Scrap section');
       } else {
-        console.log('Could not find Value Scrap section markers');
+        console.log('Could not find Value Scrap section pattern');
       }
     }
     
-    // Add new line after "Material Received:" under "i-Series PCs and Laptops"
-    html = html.replace(
-      /<p class="p1"><span class="s1"><b>i-Series PCs and Laptops<\/b><b><\/b><\/span><\/p>\s*<p class="p2"><span class="s1"> <\/span><\/p>\s*<p class="p3"><span class="s1"><b>Material Received:<\/b><b><\/b><\/span><\/p>\s*<p class="p3"><span class="s1"> <\/span><\/p>/,
-      '<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b><b></b></span></p>\n<p class="p2"><span class="s1"> </span></p>\n<p class="p3"><span class="s1"><b>Material Received:</b><b></b></span></p>\n<p class="p3"><span class="s1"> </span></p>\n<p class="p3"><span class="s1"> </span></p>\n'
-    );
-    
-    // Replace i-Series section
+    // Replace i-Series section - preserve spacing structure
     console.log('Processing i-Series section');
     console.log('i-Series PCs:', checkIn.iSeriesPcs?.length || 0);
     console.log('i-Series Laptops:', checkIn.iSeriesLaptops?.length || 0);
@@ -387,7 +368,7 @@ const generateHTMLFromTemplate = async (
     if ((checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) || 
         (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0)) {
       
-      // Build the new i-Series entries HTML
+      // Build the new i-Series entries HTML with proper spacing
       let iSeriesEntriesHTML = '';
       
       // Add PCs
@@ -395,11 +376,11 @@ const generateHTMLFromTemplate = async (
         checkIn.iSeriesPcs.forEach((item, index) => {
           console.log(`i-Series PC ${index}:`, item.processorSeries, item.processorGeneration, item.quantity);
           
-          const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)} ${escapeHtml(item.quantity)}&nbsp;Pcs.`;
+          const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)}: ${escapeHtml(item.quantity)}&nbsp;Pcs.`;
           
-          iSeriesEntriesHTML += `<p class="p3"><span class="s1">${entryText}</span></p>\n`;
+          iSeriesEntriesHTML += `<p class="p4"><span class="s1">${entryText}</span></p>\n`;
           
-          // Add spacing line between entries
+          // Add empty line between entries (p5 class with min-height for spacing)
           if (index < checkIn.iSeriesPcs.length - 1) {
             iSeriesEntriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
           }
@@ -417,11 +398,11 @@ const generateHTMLFromTemplate = async (
         checkIn.iSeriesLaptops.forEach((item, index) => {
           console.log(`i-Series Laptop ${index}:`, item.processorSeries, item.processorGeneration, item.quantity);
           
-          const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)} ${escapeHtml(item.quantity)}&nbsp;Pcs.`;
+          const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)}: ${escapeHtml(item.quantity)}&nbsp;Pcs.`;
           
-          iSeriesEntriesHTML += `<p class="p3"><span class="s1">${entryText}</span></p>\n`;
+          iSeriesEntriesHTML += `<p class="p4"><span class="s1">${entryText}</span></p>\n`;
           
-          // Add spacing line between entries (except after the last one)
+          // Add empty line between entries (except after the last one)
           if (index < checkIn.iSeriesLaptops.length - 1) {
             iSeriesEntriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
           }
@@ -431,26 +412,15 @@ const generateHTMLFromTemplate = async (
       console.log('Generated i-Series HTML length:', iSeriesEntriesHTML.length);
       
       // Find and replace the example entries in the i-Series section
-      const iSeriesStartMarker = '<p class="p3"><span class="s1">Example Entry _________ Pcs.</span></p>';
-      const iSeriesEndMarker = '<p class="p3"><span class="s1"><b> </b><b></b></span></p>';
+      // Match from first "Example Entry" after "Material Received:" to the final empty lines
+      const iSeriesPattern = /<p class="p4"><span class="s1">Example Entry: _________ Pcs\.<\/span><\/p>\s*<p class="p5"><span class="s1"><\/span><br><\/p>\s*<p class="p4"><span class="s1">Example Entry: _________ Pcs\.<\/span><\/p>\s*<p class="p5"><span class="s1"><\/span><br><\/p>\s*<p class="p4"><span class="s1">Example Entry: _________ Pcs\.<\/span><\/p>/;
       
-      // Find the first occurrence after "i-Series PCs and Laptops"
-      const iSeriesTitleIndex = html.indexOf('<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b>');
-      if (iSeriesTitleIndex !== -1) {
-        const searchStart = iSeriesTitleIndex;
-        const startIndex = html.indexOf(iSeriesStartMarker, searchStart);
-        const endIndex = html.indexOf(iSeriesEndMarker, searchStart);
-        
-        if (startIndex !== -1 && endIndex !== -1) {
-          console.log('Found i-Series section markers');
-          const beforeSection = html.substring(0, startIndex);
-          const afterSection = html.substring(endIndex);
-          
-          html = beforeSection + iSeriesEntriesHTML + afterSection;
-          console.log('Replaced i-Series section');
-        } else {
-          console.log('Could not find i-Series section markers');
-        }
+      if (iSeriesPattern.test(html)) {
+        console.log('Found i-Series section, replacing...');
+        html = html.replace(iSeriesPattern, iSeriesEntriesHTML.trim());
+        console.log('Replaced i-Series section');
+      } else {
+        console.log('Could not find i-Series section pattern');
       }
     }
     
