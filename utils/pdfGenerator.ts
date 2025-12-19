@@ -241,6 +241,19 @@ const getDefaultTemplate = (): string => {
 };
 
 /**
+ * Format categories in a natural way (e.g., "20 PCs, 71 Tablets")
+ */
+const formatCategoriesNaturally = (categories: Array<{ category: string; quantity: string }>): string => {
+  if (!categories || categories.length === 0) return '';
+  
+  return categories.map(item => {
+    const quantity = escapeHtml(item.quantity);
+    const category = escapeHtml(item.category);
+    return `${quantity} ${category}`;
+  }).join(', ');
+};
+
+/**
  * Generate HTML from template by replacing placeholders with actual data
  * This maintains the exact spacing and layout of the original template
  */
@@ -265,47 +278,54 @@ const generateHTMLFromTemplate = async (
     const totalTimeValue = escapeHtml(checkIn.totalTime || duration) || '';
     
     // Build the info line with proper spacing using &nbsp; (non-breaking spaces)
-    const infoLine = `Name ${nameValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Date ${dateValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Time ${timeValue} Total Time Out and Back ${totalTimeValue}`;
+    const infoLine = `Name ${nameValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Date ${dateValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Time ${timeValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Total Time Out and Back ${totalTimeValue}`;
     
     html = html.replace(
       /Name_____________________\s+Date _________\s+Time________\s+Total Time Out and Back ______________Hours/,
       infoLine
     );
     
-    // Replace company info
+    // Add double spacing after the first info line (add extra <p> tags)
+    html = html.replace(
+      /<p class="p2"><span class="s1"> <\/span><\/p>\s*<p class="p2"><span class="s1">Company of Origin:/,
+      '<p class="p2"><span class="s1"> </span></p>\n<p class="p2"><span class="s1"> </span></p>\n<p class="p2"><span class="s1">Company of Origin:'
+    );
+    
+    // Replace company info with double spacing between lines
     html = html.replace(
       /Company of Origin: ________________________________________________________/,
       `Company of Origin: ${escapeHtml(checkIn.companyName)}`
     );
     
     html = html.replace(
-      /Address: _________________________________________________________________/,
-      `Address: ${escapeHtml(checkIn.address)}`
+      /<p class="p2"><span class="s1">Address: _________________________________________________________________<\/span><\/p>/,
+      `<p class="p2"><span class="s1"> </span></p>\n<p class="p2"><span class="s1">Address: ${escapeHtml(checkIn.address)}</span></p>`
     );
     
     html = html.replace(
-      /Contact Person: _____________________\s+EMAIL: ______________________________/,
-      `Contact Person: ${escapeHtml(checkIn.contactPerson)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EMAIL: ${escapeHtml(checkIn.email)}`
+      /<p class="p2"><span class="s1">Contact Person: _____________________\s+EMAIL: ______________________________<\/span><\/p>/,
+      `<p class="p2"><span class="s1"> </span></p>\n<p class="p2"><span class="s1">Contact Person: ${escapeHtml(checkIn.contactPerson)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EMAIL: ${escapeHtml(checkIn.email)}</span></p>`
     );
     
     html = html.replace(
-      /PHONE: ______________________________/,
-      `PHONE: ${escapeHtml(checkIn.phone)}`
+      /<p class="p2"><span class="s1">\s+PHONE: ______________________________<\/span><\/p>/,
+      `<p class="p2"><span class="s1"> </span></p>\n<p class="p2"><span class="s1">                                                                        PHONE: ${escapeHtml(checkIn.phone)}</span></p>`
     );
     
-    // Replace categories section
+    // Add new line after "Material Received:" and before "Total Quantity for Certificate of Destruction"
+    html = html.replace(
+      /<p class="p3"><span class="s1"><b>Material Received:<\/b><b><\/b><\/span><\/p>\s*<p class="p3"><span class="s1"> <\/span><\/p>\s*<p class="p3"><span class="s1">Total Quantity for Certificate of Destruction/,
+      '<p class="p3"><span class="s1"><b>Material Received:</b><b></b></span></p>\n<p class="p3"><span class="s1"> </span></p>\n<p class="p3"><span class="s1"> </span></p>\n<p class="p3"><span class="s1">Total Quantity for Certificate of Destruction'
+    );
+    
+    // Replace categories section with natural formatting and bold/centered "Total Quantity" line
     if (checkIn.categories && checkIn.categories.length > 0) {
-      let categoriesText = '';
-      checkIn.categories.forEach((item, index) => {
-        categoriesText += `${escapeHtml(item.category)}: ${escapeHtml(item.quantity)}`;
-        if (index < checkIn.categories.length - 1) {
-          categoriesText += ', ';
-        }
-      });
+      const categoriesText = formatCategoriesNaturally(checkIn.categories);
       
+      // Replace the line with bold and centered formatting
       html = html.replace(
         /_____________________________________________________________________________________________________________________________________________/,
-        categoriesText
+        `</span></p>\n<p class="p2"><span class="s1"><b>${categoriesText}</b>`
       );
     }
     
@@ -335,7 +355,7 @@ const generateHTMLFromTemplate = async (
       
       // Find and replace the example entries in the Value Scrap section
       // We need to replace from the first "Example Entry" to just before "i-Series PCs and Laptops"
-      const valueScrapStartMarker = '<p class="p3"><span class="s1">Example Entry _________ Lbs.</span></p>';
+      const valueScrapStartMarker = '<p class="p3"><span class="s1">Example Entry';
       const valueScrapEndMarker = '<p class="p8"><span class="s1"><b> </b><b></b></span></p>';
       
       const startIndex = html.indexOf(valueScrapStartMarker);
@@ -352,6 +372,12 @@ const generateHTMLFromTemplate = async (
         console.log('Could not find Value Scrap section markers');
       }
     }
+    
+    // Add new line after "Material Received:" under "i-Series PCs and Laptops"
+    html = html.replace(
+      /<p class="p1"><span class="s1"><b>i-Series PCs and Laptops<\/b><b><\/b><\/span><\/p>\s*<p class="p2"><span class="s1"> <\/span><\/p>\s*<p class="p3"><span class="s1"><b>Material Received:<\/b><b><\/b><\/span><\/p>\s*<p class="p3"><span class="s1"> <\/span><\/p>/,
+      '<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b><b></b></span></p>\n<p class="p2"><span class="s1"> </span></p>\n<p class="p3"><span class="s1"><b>Material Received:</b><b></b></span></p>\n<p class="p3"><span class="s1"> </span></p>\n<p class="p3"><span class="s1"> </span></p>\n'
+    );
     
     // Replace i-Series section
     console.log('Processing i-Series section');
