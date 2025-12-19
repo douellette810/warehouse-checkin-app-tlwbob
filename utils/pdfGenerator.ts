@@ -4,6 +4,7 @@ import { shareAsync } from 'expo-sharing';
 import { CheckInFormData } from '@/types/checkIn';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
+import { Asset } from 'expo-asset';
 
 /**
  * PDF Template Configuration
@@ -145,432 +146,294 @@ const calculateDuration = (startedAt: string | null, finishedAt: string | null):
 };
 
 /**
- * Generate the main check-in sheet HTML (Page 1)
- * This is an EXACT carbon copy of the handwritten template
+ * Pad a string to a specific length with spaces
+ * This helps maintain the layout spacing when replacing placeholder lines
  */
-const generateMainSheetHTML = (
-  checkIn: CheckInFormData,
-  config: PDFTemplateConfig
-): string => {
-  const { date, time } = formatDateTime(checkIn.startedAt);
-  const duration = calculateDuration(checkIn.startedAt, checkIn.finishedAt);
-  
-  // Calculate total for certificate of destruction
-  const totalCategoryQuantity = checkIn.categories.reduce((total, item) => {
-    const qty = parseFloat(item.quantity) || 0;
-    return total + qty;
-  }, 0);
-
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-        <style>
-          @page {
-            size: letter;
-            margin: 0.4in 0.5in;
-          }
-          
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          
-          body {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 9pt;
-            line-height: 1.3;
-            color: #000;
-          }
-          
-          .header {
-            text-align: center;
-            margin-bottom: 12pt;
-          }
-          
-          .header h1 {
-            font-size: 11pt;
-            font-weight: bold;
-            margin: 0;
-            padding: 0;
-          }
-          
-          .form-line {
-            margin-bottom: 6pt;
-            display: flex;
-            align-items: baseline;
-          }
-          
-          .form-line-label {
-            font-weight: normal;
-            margin-right: 4pt;
-            white-space: nowrap;
-          }
-          
-          .form-line-value {
-            border-bottom: 1px solid #000;
-            flex: 1;
-            min-height: 12pt;
-            padding-left: 2pt;
-          }
-          
-          .form-row {
-            display: flex;
-            margin-bottom: 6pt;
-          }
-          
-          .form-col {
-            display: flex;
-            align-items: baseline;
-            margin-right: 12pt;
-          }
-          
-          .form-col-label {
-            font-weight: normal;
-            margin-right: 4pt;
-            white-space: nowrap;
-          }
-          
-          .form-col-value {
-            border-bottom: 1px solid #000;
-            min-width: 80pt;
-            padding-left: 2pt;
-          }
-          
-          .section-header {
-            font-weight: bold;
-            font-size: 9pt;
-            margin-top: 10pt;
-            margin-bottom: 6pt;
-          }
-          
-          .subsection-header {
-            font-weight: normal;
-            font-size: 9pt;
-            margin-top: 8pt;
-            margin-bottom: 4pt;
-          }
-          
-          .category-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 4pt;
-            margin-bottom: 8pt;
-          }
-          
-          .category-table td {
-            border: 1px solid #000;
-            padding: 3pt 4pt;
-            font-size: 9pt;
-          }
-          
-          .category-table .header-cell {
-            font-weight: bold;
-            text-align: center;
-          }
-          
-          .category-table .total-cell {
-            font-weight: bold;
-          }
-          
-          .material-line {
-            margin-bottom: 3pt;
-            display: flex;
-            justify-content: space-between;
-          }
-          
-          .material-name {
-            font-weight: normal;
-          }
-          
-          .material-qty {
-            font-weight: normal;
-            margin-left: 12pt;
-          }
-          
-          .notes-label {
-            font-weight: normal;
-            margin-top: 8pt;
-            margin-bottom: 3pt;
-          }
-          
-          .notes-box {
-            border: 1px solid #000;
-            min-height: 36pt;
-            padding: 4pt;
-            margin-bottom: 8pt;
-          }
-        </style>
-      </head>
-      <body>
-        <!-- Header -->
-        <div class="header">
-          <h1>Circuitry Solutions Warehouse Receiving Receipt</h1>
-        </div>
-        
-        <!-- Basic Info Section -->
-        <div class="form-row">
-          <div class="form-col" style="flex: 2;">
-            <span class="form-col-label">Name:</span>
-            <span class="form-col-value" style="flex: 1;">${escapeHtml(checkIn.employeeName)}</span>
-          </div>
-          <div class="form-col">
-            <span class="form-col-label">Date:</span>
-            <span class="form-col-value">${escapeHtml(date)}</span>
-          </div>
-          <div class="form-col">
-            <span class="form-col-label">Time:</span>
-            <span class="form-col-value">${escapeHtml(time)}</span>
-          </div>
-        </div>
-        
-        <div class="form-line">
-          <span class="form-line-label">Total Time Out and Back (Hrs.):</span>
-          <span class="form-line-value">${escapeHtml(checkIn.totalTime || duration)}</span>
-        </div>
-        
-        <!-- Company Info Section -->
-        <div class="form-line">
-          <span class="form-line-label">Company of Origin:</span>
-          <span class="form-line-value">${escapeHtml(checkIn.companyName)}</span>
-        </div>
-        
-        <div class="form-line">
-          <span class="form-line-label">Address:</span>
-          <span class="form-line-value">${escapeHtml(checkIn.address)}</span>
-        </div>
-        
-        <div class="form-line">
-          <span class="form-line-label">Contact Person:</span>
-          <span class="form-line-value">${escapeHtml(checkIn.contactPerson)}</span>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-col" style="flex: 1;">
-            <span class="form-col-label">EMAIL:</span>
-            <span class="form-col-value" style="flex: 1;">${escapeHtml(checkIn.email)}</span>
-          </div>
-          <div class="form-col" style="flex: 1;">
-            <span class="form-col-label">PHONE:</span>
-            <span class="form-col-value" style="flex: 1;">${escapeHtml(checkIn.phone)}</span>
-          </div>
-        </div>
-        
-        <!-- Material Received Section -->
-        <div class="section-header">Material Received:</div>
-        
-        ${checkIn.categories.length > 0 ? `
-          <div class="subsection-header">Total Quantity for Certificate of Destruction by Category:</div>
-          <div style="font-size: 8pt; font-style: italic; margin-bottom: 4pt;">(e.g # of Laptops, # of PCs, etc.)</div>
-          
-          <table class="category-table">
-            <tr>
-              <td class="header-cell" style="width: 70%;">Category</td>
-              <td class="header-cell" style="width: 30%;">Quantity</td>
-            </tr>
-            ${checkIn.categories.map(item => `
-              <tr>
-                <td>${escapeHtml(item.category)}</td>
-                <td style="text-align: center;">${escapeHtml(item.quantity)}</td>
-              </tr>
-            `).join('')}
-            <tr>
-              <td class="total-cell">TOTAL</td>
-              <td class="total-cell" style="text-align: center;">${totalCategoryQuantity}</td>
-            </tr>
-          </table>
-        ` : ''}
-        
-        ${checkIn.valueScrap.length > 0 ? `
-          <div class="subsection-header">Value Scrap:</div>
-          ${checkIn.valueScrap.map(item => `
-            <div class="material-line">
-              <span class="material-name">${escapeHtml(item.materialName)}</span>
-              <span class="material-qty">${escapeHtml(item.quantity)} ${escapeHtml(item.measurement)}</span>
-            </div>
-          `).join('')}
-        ` : ''}
-        
-        ${checkIn.chargeMaterials.length > 0 ? `
-          <div class="subsection-header">Charge Materials:</div>
-          ${checkIn.chargeMaterials.map(item => `
-            <div class="material-line">
-              <span class="material-name">${escapeHtml(item.materialName)}</span>
-              <span class="material-qty">${escapeHtml(item.quantity)} ${escapeHtml(item.measurement)}</span>
-            </div>
-          `).join('')}
-        ` : ''}
-        
-        <!-- Notes Section -->
-        ${checkIn.suspectedValueNote ? `
-          <div class="notes-label">Is there anything else of suspected value in this load?</div>
-          <div class="notes-box">${escapeHtml(checkIn.suspectedValueNote)}</div>
-        ` : ''}
-        
-        ${checkIn.otherNotes ? `
-          <div class="notes-label">Other Notes / Damages:</div>
-          <div class="notes-box">${escapeHtml(checkIn.otherNotes)}</div>
-        ` : ''}
-      </body>
-    </html>
-  `;
+const padToLength = (text: string, targetLength: number): string => {
+  if (text.length >= targetLength) return text;
+  const spacesNeeded = targetLength - text.length;
+  return text + ' '.repeat(spacesNeeded);
 };
 
 /**
- * Generate the i-Series sheet HTML (Page 2)
- * This is an EXACT carbon copy of the handwritten template
+ * Read the HTML template from the templates folder
  */
-const generateISeriesSheetHTML = (
-  checkIn: CheckInFormData,
-  config: PDFTemplateConfig
-): string => {
-  const hasISeriesData = 
-    (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) ||
-    (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0);
-
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-        <style>
-          @page {
-            size: letter;
-            margin: 0.4in 0.5in;
-          }
-          
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          
-          body {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 9pt;
-            line-height: 1.3;
-            color: #000;
-          }
-          
-          .header {
-            text-align: center;
-            margin-bottom: 12pt;
-          }
-          
-          .header h1 {
-            font-size: 11pt;
-            font-weight: bold;
-            margin: 0;
-            padding: 0;
-          }
-          
-          .section-header {
-            font-weight: bold;
-            font-size: 9pt;
-            margin-top: 10pt;
-            margin-bottom: 6pt;
-          }
-          
-          .subsection-header {
-            font-weight: normal;
-            font-size: 9pt;
-            margin-top: 8pt;
-            margin-bottom: 4pt;
-          }
-          
-          .instruction {
-            font-size: 8pt;
-            font-style: italic;
-            margin-bottom: 6pt;
-          }
-          
-          .iseries-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 4pt;
-            margin-bottom: 12pt;
-          }
-          
-          .iseries-table td {
-            border: 1px solid #000;
-            padding: 3pt 4pt;
-            font-size: 9pt;
-          }
-          
-          .iseries-table .header-cell {
-            font-weight: bold;
-            text-align: center;
-          }
-          
-          .empty-message {
-            text-align: center;
-            font-style: italic;
-            color: #666;
-            margin-top: 24pt;
-            padding: 12pt;
-            border: 1px dashed #999;
-          }
-        </style>
-      </head>
-      <body>
-        <!-- Header -->
-        <div class="header">
-          <h1>i-Series / Ryzen PCs and Laptops Breakdown</h1>
-        </div>
-        
-        <div class="section-header">Material Received:</div>
-        <div class="instruction">ANY I-SERIES OR RYZEN PCs OR LAPTOPS NEED TO BE ADDED HERE</div>
-        
-        ${hasISeriesData ? `
-          ${checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0 ? `
-            <div class="subsection-header">PCs:</div>
-            <table class="iseries-table">
-              <tr>
-                <td class="header-cell" style="width: 40%;">Processor Series</td>
-                <td class="header-cell" style="width: 40%;">Generation</td>
-                <td class="header-cell" style="width: 20%;">Quantity</td>
-              </tr>
-              ${checkIn.iSeriesPcs.map(item => `
-                <tr>
-                  <td>${escapeHtml(item.processorSeries)}</td>
-                  <td>${escapeHtml(item.processorGeneration)}</td>
-                  <td style="text-align: center;">${escapeHtml(item.quantity)}</td>
-                </tr>
-              `).join('')}
-            </table>
-          ` : ''}
-          
-          ${checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0 ? `
-            <div class="subsection-header">Laptops:</div>
-            <table class="iseries-table">
-              <tr>
-                <td class="header-cell" style="width: 40%;">Processor Series</td>
-                <td class="header-cell" style="width: 40%;">Generation</td>
-                <td class="header-cell" style="width: 20%;">Quantity</td>
-              </tr>
-              ${checkIn.iSeriesLaptops.map(item => `
-                <tr>
-                  <td>${escapeHtml(item.processorSeries)}</td>
-                  <td>${escapeHtml(item.processorGeneration)}</td>
-                  <td style="text-align: center;">${escapeHtml(item.quantity)}</td>
-                </tr>
-              `).join('')}
-            </table>
-          ` : ''}
-        ` : `
-          <div class="empty-message">
-            No i-Series or Ryzen PCs or Laptops recorded for this check-in
-          </div>
-        `}
-      </body>
-    </html>
-  `;
+const readHTMLTemplate = async (): Promise<string> => {
+  try {
+    // Try to read from the file system first
+    const templatePath = `${FileSystem.documentDirectory}../templates/checkin-template.html`;
+    const fileInfo = await FileSystem.getInfoAsync(templatePath);
+    
+    if (fileInfo.exists) {
+      const content = await FileSystem.readAsStringAsync(templatePath);
+      return content;
+    }
+    
+    // If not found, return the default template
+    console.log('Template file not found, using default template');
+    return getDefaultTemplate();
+  } catch (error) {
+    console.error('Error reading HTML template:', error);
+    return getDefaultTemplate();
+  }
 };
 
 /**
- * Generate a complete PDF with both pages
+ * Get the default HTML template (fallback)
+ */
+const getDefaultTemplate = (): string => {
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2575.7">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: center; font: 21.3px Helvetica; -webkit-text-stroke: #000000}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: center; font: 16.0px Helvetica; -webkit-text-stroke: #000000}
+    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; font: 16.0px Helvetica; -webkit-text-stroke: #000000}
+    p.p4 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: center; font: 16.0px Helvetica; -webkit-text-stroke: #000000; min-height: 19.0px}
+    p.p5 {margin: 0.0px 0.0px 0.0px 0.0px; font: 16.0px Helvetica; -webkit-text-stroke: #000000; min-height: 19.0px}
+    p.p6 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: justify; font: 16.0px Helvetica; -webkit-text-stroke: #000000}
+    p.p7 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: justify; font: 16.0px Helvetica; -webkit-text-stroke: #000000; min-height: 19.0px}
+    p.p8 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: justify; font: 21.3px Helvetica; -webkit-text-stroke: #000000}
+    span.s1 {font-kerning: none}
+    span.s2 {font: 21.3px Helvetica; font-kerning: none}
+    span.Apple-tab-span {white-space:pre}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1"><b>Circuitry Solutions Warehouse Receiving Receipt</b><b></b></span></p>
+<p class="p2"><span class="s1"> </span></p>
+<p class="p2"><span class="s1">Name_____________________        Date _________          Time________ Total Time Out and Back ______________Hours</span></p>
+<p class="p2"><span class="s1"> </span></p>
+<p class="p2"><span class="s1">Company of Origin: ________________________________________________________</span></p>
+<p class="p2"><span class="s1">Address: _________________________________________________________________</span></p>
+<p class="p2"><span class="s1">Contact Person: _____________________     EMAIL: ______________________________</span></p>
+<p class="p2"><span class="s1">                                                                        PHONE: ______________________________</span></p>
+<p class="p3"><span class="s1"><b>Material Received:</b><b></b></span></p>
+<p class="p3"><span class="s1"> </span></p>
+<p class="p3"><span class="s1">Total Quantity for Certificate of Destruction by Category: (e.g # of Laptops, # of PCs, etc.)<span class="Apple-converted-space"> </span></span></p>
+<p class="p4"><span class="s1"></span><br></p>
+<p class="p2"><span class="s1">_____________________________________________________________________________________________________________________________________________</span></p>
+<p class="p4"><span class="s1"></span><br></p>
+<p class="p4"><span class="s1"></span><br></p>
+<p class="p1"><span class="s2"><b>Value Scrap</b><b></b></span></p>
+<p class="p3"><span class="s1"> <span class="Apple-tab-span">	</span><span class="Apple-tab-span">	</span><span class="Apple-tab-span">	</span><span class="Apple-tab-span">	</span></span></p>
+<p class="p3"><span class="s1"> </span></p>
+<p class="p3"><span class="s1">Example Entry _________ Lbs.</span></p>
+<p class="p5"><span class="s1"><span class="Apple-tab-span">	</span></span></p>
+<p class="p3"><span class="s1">Example Entry ______________ Pcs.</span></p>
+<p class="p5"><span class="s1"></span><br></p>
+<p class="p3"><span class="s1">Example Entry _________ Lbs.</span></p>
+<p class="p3"><span class="s1"> </span></p>
+<p class="p3"><span class="s1">Example Entry ____________ Lbs.</span></p>
+<p class="p5"><span class="s1"></span><br></p>
+<p class="p6"><span class="s1">Example Entry______________ Pcs.</span></p>
+<p class="p7"><span class="s1"></span><br></p>
+<p class="p6"><span class="s1">Example Entry _______ Lbs.</span></p>
+<p class="p8"><span class="s1"><b> </b><b></b></span></p>
+<p class="p1"><span class="s1"><b> </b><b></b></span></p>
+<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b><b></b></span></p>
+<p class="p2"><span class="s1"> </span></p>
+<p class="p3"><span class="s1"><b>Material Received:</b><b></b></span></p>
+<p class="p3"><span class="s1"> </span></p>
+<p class="p3"><span class="s1">Example Entry _________ Pcs.</span></p>
+<p class="p5"><span class="s1"></span><br></p>
+<p class="p3"><span class="s1">Example Entry _________ Pcs.</span></p>
+<p class="p5"><span class="s1"></span><br></p>
+<p class="p3"><span class="s1">Example Entry _________ Pcs.</span></p>
+<p class="p3"><span class="s1"><b> </b><b></b></span></p>
+<p class="p3"><span class="s1"> </span></p>
+</body>
+</html>`;
+};
+
+/**
+ * Generate HTML from template by replacing placeholders with actual data
+ * This maintains the exact spacing and layout of the original template
+ */
+const generateHTMLFromTemplate = async (
+  checkIn: CheckInFormData,
+  config: PDFTemplateConfig
+): Promise<string> => {
+  try {
+    // Read the HTML template
+    let html = await readHTMLTemplate();
+    
+    // Format date and time
+    const { date, time } = formatDateTime(checkIn.startedAt);
+    const duration = calculateDuration(checkIn.startedAt, checkIn.finishedAt);
+    
+    // Replace basic info - maintaining spacing with underscores
+    const nameLineLength = 21; // Length of "Name_____________________"
+    const dateLineLength = 9;  // Length of "Date _________"
+    const timeLineLength = 8;  // Length of "Time________"
+    const totalTimeLineLength = 14; // Length of "______________Hours"
+    
+    const nameLine = `Name ${padToLength(escapeHtml(checkIn.employeeName), nameLineLength - 5)}`;
+    const dateLine = `Date ${padToLength(escapeHtml(date), dateLineLength - 5)}`;
+    const timeLine = `Time ${padToLength(escapeHtml(time), timeLineLength - 5)}`;
+    const totalTimeLine = `Total Time Out and Back ${padToLength(escapeHtml(checkIn.totalTime || duration), totalTimeLineLength - 5)}Hours`;
+    
+    // Replace the entire line with proper spacing
+    html = html.replace(
+      /Name_____________________\s+Date _________\s+Time________\s+Total Time Out and Back ______________Hours/,
+      `${nameLine}        ${dateLine}          ${timeLine} ${totalTimeLine}`
+    );
+    
+    // Replace company info
+    const companyLineLength = 56; // Length of underscores in "Company of Origin: ________________________________________________________"
+    const addressLineLength = 65; // Length of underscores in "Address: _________________________________________________________________"
+    const contactLineLength = 21; // Length of underscores in "Contact Person: _____________________"
+    const emailLineLength = 30; // Length of underscores in "EMAIL: ______________________________"
+    const phoneLineLength = 30; // Length of underscores in "PHONE: ______________________________"
+    
+    html = html.replace(
+      /Company of Origin: ________________________________________________________/,
+      `Company of Origin: ${padToLength(escapeHtml(checkIn.companyName), companyLineLength)}`
+    );
+    
+    html = html.replace(
+      /Address: _________________________________________________________________/,
+      `Address: ${padToLength(escapeHtml(checkIn.address), addressLineLength)}`
+    );
+    
+    html = html.replace(
+      /Contact Person: _____________________\s+EMAIL: ______________________________/,
+      `Contact Person: ${padToLength(escapeHtml(checkIn.contactPerson), contactLineLength)}     EMAIL: ${padToLength(escapeHtml(checkIn.email), emailLineLength)}`
+    );
+    
+    html = html.replace(
+      /PHONE: ______________________________/,
+      `PHONE: ${padToLength(escapeHtml(checkIn.phone), phoneLineLength)}`
+    );
+    
+    // Replace categories section
+    if (checkIn.categories && checkIn.categories.length > 0) {
+      let categoriesHTML = '';
+      checkIn.categories.forEach((item, index) => {
+        const categoryText = `${escapeHtml(item.category)}: ${escapeHtml(item.quantity)}`;
+        categoriesHTML += categoryText;
+        if (index < checkIn.categories.length - 1) {
+          categoriesHTML += ', ';
+        }
+      });
+      
+      // Replace the long line of underscores with the categories
+      html = html.replace(
+        /_____________________________________________________________________________________________________________________________________________/,
+        padToLength(categoriesHTML, 141)
+      );
+    }
+    
+    // Replace Value Scrap section
+    if (checkIn.valueScrap && checkIn.valueScrap.length > 0) {
+      // Find the Value Scrap section
+      const valueScrapSectionStart = html.indexOf('<p class="p1"><span class="s2"><b>Value Scrap</b>');
+      const valueScrapSectionEnd = html.indexOf('<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b>');
+      
+      if (valueScrapSectionStart !== -1 && valueScrapSectionEnd !== -1) {
+        // Build the new Value Scrap section
+        let valueScrapHTML = '<p class="p1"><span class="s2"><b>Value Scrap</b><b></b></span></p>\n';
+        valueScrapHTML += '<p class="p3"><span class="s1"> <span class="Apple-tab-span">\t</span><span class="Apple-tab-span">\t</span><span class="Apple-tab-span">\t</span><span class="Apple-tab-span">\t</span></span></p>\n';
+        valueScrapHTML += '<p class="p3"><span class="s1"> </span></p>\n';
+        
+        // Add each value scrap entry
+        checkIn.valueScrap.forEach((item, index) => {
+          const entryText = `${escapeHtml(item.materialName)} ${padToLength('', 9)} ${escapeHtml(item.measurement)}.`;
+          const lineLength = 30; // Approximate length of "Example Entry _________ Lbs."
+          const paddedEntry = padToLength(entryText, lineLength);
+          
+          valueScrapHTML += `<p class="p3"><span class="s1">${paddedEntry}</span></p>\n`;
+          
+          // Add spacing between entries (empty line)
+          if (index < checkIn.valueScrap.length - 1) {
+            valueScrapHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
+          }
+        });
+        
+        valueScrapHTML += '<p class="p8"><span class="s1"><b> </b><b></b></span></p>\n';
+        valueScrapHTML += '<p class="p1"><span class="s1"><b> </b><b></b></span></p>\n';
+        
+        // Replace the section
+        const beforeSection = html.substring(0, valueScrapSectionStart);
+        const afterSection = html.substring(valueScrapSectionEnd);
+        html = beforeSection + valueScrapHTML + afterSection;
+      }
+    }
+    
+    // Replace i-Series section
+    if ((checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) || 
+        (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0)) {
+      
+      // Find the i-Series section
+      const iSeriesSectionStart = html.indexOf('<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b>');
+      const iSeriesSectionEnd = html.indexOf('</body>');
+      
+      if (iSeriesSectionStart !== -1 && iSeriesSectionEnd !== -1) {
+        // Build the new i-Series section
+        let iSeriesHTML = '<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b><b></b></span></p>\n';
+        iSeriesHTML += '<p class="p2"><span class="s1"> </span></p>\n';
+        iSeriesHTML += '<p class="p3"><span class="s1"><b>Material Received:</b><b></b></span></p>\n';
+        iSeriesHTML += '<p class="p3"><span class="s1"> </span></p>\n';
+        
+        // Add PCs
+        if (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) {
+          checkIn.iSeriesPcs.forEach((item, index) => {
+            const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)} ${padToLength('', 9)} ${escapeHtml(item.quantity)} Pcs.`;
+            const lineLength = 30;
+            const paddedEntry = padToLength(entryText, lineLength);
+            
+            iSeriesHTML += `<p class="p3"><span class="s1">${paddedEntry}</span></p>\n`;
+            
+            if (index < checkIn.iSeriesPcs.length - 1) {
+              iSeriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
+            }
+          });
+        }
+        
+        // Add spacing between PCs and Laptops
+        if (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0 && 
+            checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0) {
+          iSeriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
+        }
+        
+        // Add Laptops
+        if (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0) {
+          checkIn.iSeriesLaptops.forEach((item, index) => {
+            const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)} ${padToLength('', 9)} ${escapeHtml(item.quantity)} Pcs.`;
+            const lineLength = 30;
+            const paddedEntry = padToLength(entryText, lineLength);
+            
+            iSeriesHTML += `<p class="p3"><span class="s1">${paddedEntry}</span></p>\n`;
+            
+            if (index < checkIn.iSeriesLaptops.length - 1) {
+              iSeriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
+            }
+          });
+        }
+        
+        iSeriesHTML += '<p class="p3"><span class="s1"><b> </b><b></b></span></p>\n';
+        iSeriesHTML += '<p class="p3"><span class="s1"> </span></p>\n';
+        
+        // Replace the section
+        const beforeSection = html.substring(0, iSeriesSectionStart);
+        html = beforeSection + iSeriesHTML + '\n</body>\n</html>';
+      }
+    }
+    
+    return html;
+  } catch (error) {
+    console.error('Error generating HTML from template:', error);
+    throw error;
+  }
+};
+
+/**
+ * Generate a complete PDF using the HTML template
  */
 export const generateCheckInPDF = async (
   checkIn: CheckInFormData,
@@ -581,52 +444,13 @@ export const generateCheckInPDF = async (
     
     console.log('Generating PDF for check-in:', checkIn.companyName);
     
-    // Generate main sheet HTML
-    const mainSheetHTML = generateMainSheetHTML(checkIn, finalConfig);
-    
-    // Generate i-Series sheet HTML
-    const iSeriesSheetHTML = generateISeriesSheetHTML(checkIn, finalConfig);
-    
-    // Determine if we need to show the i-Series page
-    const hasISeriesData = 
-      (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) ||
-      (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0);
-    
-    // Combine both pages into a single HTML document
-    const combinedHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-          <style>
-            @page {
-              size: letter;
-              margin: 0;
-            }
-            
-            .page-break {
-              page-break-after: always;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="page-break">
-            ${mainSheetHTML.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
-          </div>
-          
-          ${finalConfig.showISeries && hasISeriesData ? `
-            <div>
-              ${iSeriesSheetHTML.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
-            </div>
-          ` : ''}
-        </body>
-      </html>
-    `;
+    // Generate HTML from template
+    const html = await generateHTMLFromTemplate(checkIn, finalConfig);
     
     // Generate PDF with error handling
     console.log('Calling Print.printToFileAsync...');
     const { uri } = await Print.printToFileAsync({
-      html: combinedHTML,
+      html: html,
     });
     
     console.log('PDF generated successfully:', uri);
@@ -703,52 +527,13 @@ export const generateMultipleCheckInsPDF = async (
       try {
         console.log(`Generating PDF ${i + 1}/${checkIns.length}: ${checkIn.companyName}`);
         
-        // Generate main sheet HTML
-        const mainSheetHTML = generateMainSheetHTML(checkIn, finalConfig);
-        
-        // Generate i-Series sheet HTML
-        const iSeriesSheetHTML = generateISeriesSheetHTML(checkIn, finalConfig);
-        
-        // Determine if we need to show the i-Series page
-        const hasISeriesData = 
-          (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) ||
-          (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0);
-        
-        // Combine both pages into a single HTML document
-        const combinedHTML = `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-              <style>
-                @page {
-                  size: letter;
-                  margin: 0;
-                }
-                
-                .page-break {
-                  page-break-after: always;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="page-break">
-                ${mainSheetHTML.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
-              </div>
-              
-              ${finalConfig.showISeries && hasISeriesData ? `
-                <div>
-                  ${iSeriesSheetHTML.replace(/<!DOCTYPE html>|<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>/gs, '')}
-                </div>
-              ` : ''}
-            </body>
-          </html>
-        `;
+        // Generate HTML from template
+        const html = await generateHTMLFromTemplate(checkIn, finalConfig);
         
         // Generate PDF
         console.log(`Calling Print.printToFileAsync for check-in ${i + 1}...`);
         const { uri } = await Print.printToFileAsync({
-          html: combinedHTML,
+          html: html,
         });
         
         console.log(`PDF ${i + 1} generated:`, uri);
