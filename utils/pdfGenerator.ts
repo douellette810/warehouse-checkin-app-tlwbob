@@ -276,10 +276,11 @@ const generateHTMLFromTemplate = async (
     const duration = calculateDuration(checkIn.startedAt, checkIn.finishedAt);
     
     // Replace basic info line - preserve exact spacing from template
-    const nameValue = escapeHtml(checkIn.employeeName) || '';
-    const dateValue = escapeHtml(date) || '';
-    const timeValue = escapeHtml(time) || '';
-    const totalTimeValue = escapeHtml(checkIn.totalTime || duration) || '';
+    // Wrap each value in <b> tags for bold formatting
+    const nameValue = `<b>${escapeHtml(checkIn.employeeName) || ''}</b>`;
+    const dateValue = `<b>${escapeHtml(date) || ''}</b>`;
+    const timeValue = `<b>${escapeHtml(time) || ''}</b>`;
+    const totalTimeValue = `<b>${escapeHtml(checkIn.totalTime || duration) || ''}</b>`;
     
     // Build the info line with proper spacing matching the template structure
     const infoLine = `Name ${nameValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;        <span class="Apple-converted-space">  </span>Date ${dateValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;          Time ${timeValue} <span class="Apple-converted-space">          </span>Total Time Out and Back ${totalTimeValue}`;
@@ -290,27 +291,31 @@ const generateHTMLFromTemplate = async (
     );
     
     // Replace company info - PRESERVE the empty <p> tags for double spacing
+    // Wrap company name in <b> tags
     html = html.replace(
       /Company of Origin: ________________________________________________________/,
-      `Company of Origin: ${escapeHtml(checkIn.companyName)}`
+      `Company of Origin: <b>${escapeHtml(checkIn.companyName)}</b>`
     );
     
     // Replace address - keep the <p class="p3"> empty line before it
+    // Wrap address in <b> tags
     html = html.replace(
       /Address: _________________________________________________________________/,
-      `Address: ${escapeHtml(checkIn.address)}`
+      `Address: <b>${escapeHtml(checkIn.address)}</b>`
     );
     
     // Replace contact person and email - keep the <p class="p3"> empty line before it
+    // Wrap contact person and email in <b> tags
     html = html.replace(
       /Contact Person: _____________________\s+EMAIL: ______________________________/,
-      `Contact Person: ${escapeHtml(checkIn.contactPerson)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EMAIL: ${escapeHtml(checkIn.email)}`
+      `Contact Person: <b>${escapeHtml(checkIn.contactPerson)}</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EMAIL: <b>${escapeHtml(checkIn.email)}</b>`
     );
     
     // Replace phone - keep the <p class="p3"> empty line before it
+    // Wrap phone in <b> tags
     html = html.replace(
       /<span class="Apple-converted-space">\s+<\/span>PHONE: ______________________________/,
-      `<span class="Apple-converted-space">    </span>PHONE: ${escapeHtml(checkIn.phone)}`
+      `<span class="Apple-converted-space">    </span>PHONE: <b>${escapeHtml(checkIn.phone)}</b>`
     );
     
     // Replace categories section - preserve the empty lines and formatting
@@ -334,8 +339,8 @@ const generateHTMLFromTemplate = async (
       checkIn.valueScrap.forEach((item, index) => {
         console.log(`Value Scrap item ${index}:`, item.materialName, item.quantity, item.measurement);
         
-        // Create entry matching the template format
-        const entryText = `${escapeHtml(item.materialName)}: ${escapeHtml(item.quantity)}&nbsp;${escapeHtml(item.measurement)}.`;
+        // Create entry matching the template format with bold values
+        const entryText = `${escapeHtml(item.materialName)}: <b>${escapeHtml(item.quantity)}&nbsp;${escapeHtml(item.measurement)}.</b>`;
         
         valueScrapEntriesHTML += `<p class="p4"><span class="s1">${entryText}</span></p>\n`;
         
@@ -376,7 +381,8 @@ const generateHTMLFromTemplate = async (
         checkIn.iSeriesPcs.forEach((item, index) => {
           console.log(`i-Series PC ${index}:`, item.processorSeries, item.processorGeneration, item.quantity);
           
-          const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)}: ${escapeHtml(item.quantity)}&nbsp;Pcs.`;
+          // Create entry with bold values
+          const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)}: <b>${escapeHtml(item.quantity)}&nbsp;Pcs.</b>`;
           
           iSeriesEntriesHTML += `<p class="p4"><span class="s1">${entryText}</span></p>\n`;
           
@@ -398,7 +404,8 @@ const generateHTMLFromTemplate = async (
         checkIn.iSeriesLaptops.forEach((item, index) => {
           console.log(`i-Series Laptop ${index}:`, item.processorSeries, item.processorGeneration, item.quantity);
           
-          const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)}: ${escapeHtml(item.quantity)}&nbsp;Pcs.`;
+          // Create entry with bold values
+          const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)}: <b>${escapeHtml(item.quantity)}&nbsp;Pcs.</b>`;
           
           iSeriesEntriesHTML += `<p class="p4"><span class="s1">${entryText}</span></p>\n`;
           
