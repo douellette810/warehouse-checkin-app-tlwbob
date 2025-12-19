@@ -146,7 +146,7 @@ const calculateDuration = (startedAt: string | null, finishedAt: string | null):
 
 /**
  * Generate the main check-in sheet HTML (Page 1)
- * This matches the exact formatting of the handwritten template
+ * This is an EXACT carbon copy of the handwritten template
  */
 const generateMainSheetHTML = (
   checkIn: CheckInFormData,
@@ -167,6 +167,11 @@ const generateMainSheetHTML = (
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
         <style>
+          @page {
+            size: letter;
+            margin: 0.4in 0.5in;
+          }
+          
           * {
             margin: 0;
             padding: 0;
@@ -175,298 +180,238 @@ const generateMainSheetHTML = (
           
           body {
             font-family: 'Courier New', Courier, monospace;
-            font-size: 10pt;
-            padding: 0.5in;
-            line-height: 1.4;
+            font-size: 9pt;
+            line-height: 1.3;
             color: #000;
           }
           
           .header {
             text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 3px double #000;
+            margin-bottom: 12pt;
           }
           
           .header h1 {
-            font-size: 14pt;
+            font-size: 11pt;
             font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            margin: 0;
+            padding: 0;
           }
           
-          .form-section {
-            margin-bottom: 15px;
-            page-break-inside: avoid;
+          .form-line {
+            margin-bottom: 6pt;
+            display: flex;
+            align-items: baseline;
+          }
+          
+          .form-line-label {
+            font-weight: normal;
+            margin-right: 4pt;
+            white-space: nowrap;
+          }
+          
+          .form-line-value {
+            border-bottom: 1px solid #000;
+            flex: 1;
+            min-height: 12pt;
+            padding-left: 2pt;
           }
           
           .form-row {
             display: flex;
-            margin-bottom: 8px;
-            align-items: baseline;
+            margin-bottom: 6pt;
           }
           
-          .form-field {
+          .form-col {
             display: flex;
             align-items: baseline;
-            margin-right: 20px;
+            margin-right: 12pt;
           }
           
-          .form-field-full {
-            display: flex;
-            align-items: baseline;
-            width: 100%;
-            margin-bottom: 8px;
-          }
-          
-          .field-label {
-            font-weight: bold;
-            margin-right: 8px;
+          .form-col-label {
+            font-weight: normal;
+            margin-right: 4pt;
             white-space: nowrap;
           }
           
-          .field-value {
+          .form-col-value {
             border-bottom: 1px solid #000;
-            min-width: 150px;
-            padding: 0 5px 2px 5px;
-            flex: 1;
+            min-width: 80pt;
+            padding-left: 2pt;
           }
           
-          .section-title {
+          .section-header {
             font-weight: bold;
-            font-size: 11pt;
-            margin-bottom: 10px;
-            margin-top: 15px;
-            text-decoration: underline;
-            text-transform: uppercase;
+            font-size: 9pt;
+            margin-top: 10pt;
+            margin-bottom: 6pt;
           }
           
-          .subsection-title {
-            font-weight: bold;
-            font-size: 10pt;
-            margin-top: 12px;
-            margin-bottom: 8px;
+          .subsection-header {
+            font-weight: normal;
+            font-size: 9pt;
+            margin-top: 8pt;
+            margin-bottom: 4pt;
           }
           
           .category-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 10px 0;
-            border: 2px solid #000;
+            margin-top: 4pt;
+            margin-bottom: 8pt;
           }
           
-          .category-table th,
           .category-table td {
             border: 1px solid #000;
-            padding: 6px 8px;
-            text-align: left;
-          }
-          
-          .category-table th {
-            background-color: #e8e8e8;
-            font-weight: bold;
-            text-transform: uppercase;
+            padding: 3pt 4pt;
             font-size: 9pt;
           }
           
-          .category-table td {
-            font-size: 10pt;
-          }
-          
-          .category-table .total-row {
+          .category-table .header-cell {
             font-weight: bold;
-            background-color: #f5f5f5;
-            border-top: 2px solid #000;
+            text-align: center;
           }
           
-          .material-list {
-            margin: 10px 0;
+          .category-table .total-cell {
+            font-weight: bold;
           }
           
-          .material-item {
+          .material-line {
+            margin-bottom: 3pt;
             display: flex;
             justify-content: space-between;
-            padding: 5px 10px;
-            margin-bottom: 4px;
-            border: 1px solid #000;
-            background-color: #fafafa;
           }
           
           .material-name {
-            font-weight: 500;
+            font-weight: normal;
           }
           
-          .material-quantity {
-            font-weight: bold;
-            margin-left: 20px;
-          }
-          
-          .notes-section {
-            margin-top: 15px;
-            page-break-inside: avoid;
-          }
-          
-          .notes-box {
-            border: 2px solid #000;
-            padding: 10px;
-            min-height: 60px;
-            margin-top: 8px;
-            background-color: #fafafa;
+          .material-qty {
+            font-weight: normal;
+            margin-left: 12pt;
           }
           
           .notes-label {
-            font-weight: bold;
-            margin-bottom: 5px;
-            text-transform: uppercase;
+            font-weight: normal;
+            margin-top: 8pt;
+            margin-bottom: 3pt;
           }
           
-          .notes-content {
-            font-size: 10pt;
-            white-space: pre-wrap;
-            line-height: 1.5;
-          }
-          
-          .instruction-text {
-            font-size: 9pt;
-            font-style: italic;
-            color: #555;
-            margin-bottom: 8px;
+          .notes-box {
+            border: 1px solid #000;
+            min-height: 36pt;
+            padding: 4pt;
+            margin-bottom: 8pt;
           }
         </style>
       </head>
       <body>
+        <!-- Header -->
         <div class="header">
           <h1>Circuitry Solutions Warehouse Receiving Receipt</h1>
         </div>
         
-        <!-- Basic Information Section -->
-        <div class="form-section">
-          <div class="form-row">
-            <div class="form-field" style="flex: 2;">
-              <span class="field-label">Name:</span>
-              <span class="field-value">${escapeHtml(checkIn.employeeName)}</span>
-            </div>
-            <div class="form-field" style="flex: 1;">
-              <span class="field-label">Date:</span>
-              <span class="field-value">${escapeHtml(date)}</span>
-            </div>
-            <div class="form-field" style="flex: 1;">
-              <span class="field-label">Time:</span>
-              <span class="field-value">${escapeHtml(time)}</span>
-            </div>
+        <!-- Basic Info Section -->
+        <div class="form-row">
+          <div class="form-col" style="flex: 2;">
+            <span class="form-col-label">Name:</span>
+            <span class="form-col-value" style="flex: 1;">${escapeHtml(checkIn.employeeName)}</span>
           </div>
-          
-          <div class="form-field-full">
-            <span class="field-label">Total Time Out and Back (Hrs.):</span>
-            <span class="field-value">${escapeHtml(checkIn.totalTime || duration)}</span>
+          <div class="form-col">
+            <span class="form-col-label">Date:</span>
+            <span class="form-col-value">${escapeHtml(date)}</span>
+          </div>
+          <div class="form-col">
+            <span class="form-col-label">Time:</span>
+            <span class="form-col-value">${escapeHtml(time)}</span>
           </div>
         </div>
         
-        <!-- Company Information Section -->
-        <div class="form-section">
-          <div class="form-field-full">
-            <span class="field-label">Company of Origin:</span>
-            <span class="field-value">${escapeHtml(checkIn.companyName)}</span>
+        <div class="form-line">
+          <span class="form-line-label">Total Time Out and Back (Hrs.):</span>
+          <span class="form-line-value">${escapeHtml(checkIn.totalTime || duration)}</span>
+        </div>
+        
+        <!-- Company Info Section -->
+        <div class="form-line">
+          <span class="form-line-label">Company of Origin:</span>
+          <span class="form-line-value">${escapeHtml(checkIn.companyName)}</span>
+        </div>
+        
+        <div class="form-line">
+          <span class="form-line-label">Address:</span>
+          <span class="form-line-value">${escapeHtml(checkIn.address)}</span>
+        </div>
+        
+        <div class="form-line">
+          <span class="form-line-label">Contact Person:</span>
+          <span class="form-line-value">${escapeHtml(checkIn.contactPerson)}</span>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-col" style="flex: 1;">
+            <span class="form-col-label">EMAIL:</span>
+            <span class="form-col-value" style="flex: 1;">${escapeHtml(checkIn.email)}</span>
           </div>
-          
-          <div class="form-field-full">
-            <span class="field-label">Address:</span>
-            <span class="field-value">${escapeHtml(checkIn.address)}</span>
-          </div>
-          
-          <div class="form-field-full">
-            <span class="field-label">Contact Person:</span>
-            <span class="field-value">${escapeHtml(checkIn.contactPerson)}</span>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-field" style="flex: 1;">
-              <span class="field-label">EMAIL:</span>
-              <span class="field-value">${escapeHtml(checkIn.email)}</span>
-            </div>
-            <div class="form-field" style="flex: 1;">
-              <span class="field-label">PHONE:</span>
-              <span class="field-value">${escapeHtml(checkIn.phone)}</span>
-            </div>
+          <div class="form-col" style="flex: 1;">
+            <span class="form-col-label">PHONE:</span>
+            <span class="form-col-value" style="flex: 1;">${escapeHtml(checkIn.phone)}</span>
           </div>
         </div>
         
         <!-- Material Received Section -->
-        <div class="section-title">Material Received:</div>
+        <div class="section-header">Material Received:</div>
         
         ${checkIn.categories.length > 0 ? `
-          <div class="form-section">
-            <div class="subsection-title">Total Quantity for Certificate of Destruction by Category:</div>
-            <div class="instruction-text">(e.g # of Laptops, # of PCs, etc.)</div>
-            
-            <table class="category-table">
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th style="width: 120px;">Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${checkIn.categories.map(item => `
-                  <tr>
-                    <td>${escapeHtml(item.category)}</td>
-                    <td>${escapeHtml(item.quantity)}</td>
-                  </tr>
-                `).join('')}
-                <tr class="total-row">
-                  <td>TOTAL</td>
-                  <td>${totalCategoryQuantity}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <div class="subsection-header">Total Quantity for Certificate of Destruction by Category:</div>
+          <div style="font-size: 8pt; font-style: italic; margin-bottom: 4pt;">(e.g # of Laptops, # of PCs, etc.)</div>
+          
+          <table class="category-table">
+            <tr>
+              <td class="header-cell" style="width: 70%;">Category</td>
+              <td class="header-cell" style="width: 30%;">Quantity</td>
+            </tr>
+            ${checkIn.categories.map(item => `
+              <tr>
+                <td>${escapeHtml(item.category)}</td>
+                <td style="text-align: center;">${escapeHtml(item.quantity)}</td>
+              </tr>
+            `).join('')}
+            <tr>
+              <td class="total-cell">TOTAL</td>
+              <td class="total-cell" style="text-align: center;">${totalCategoryQuantity}</td>
+            </tr>
+          </table>
         ` : ''}
         
         ${checkIn.valueScrap.length > 0 ? `
-          <div class="form-section">
-            <div class="subsection-title">Value Scrap Received:</div>
-            <div class="material-list">
-              ${checkIn.valueScrap.map(item => `
-                <div class="material-item">
-                  <span class="material-name">${escapeHtml(item.materialName)}</span>
-                  <span class="material-quantity">${escapeHtml(item.quantity)} ${escapeHtml(item.measurement)}</span>
-                </div>
-              `).join('')}
+          <div class="subsection-header">Value Scrap:</div>
+          ${checkIn.valueScrap.map(item => `
+            <div class="material-line">
+              <span class="material-name">${escapeHtml(item.materialName)}</span>
+              <span class="material-qty">${escapeHtml(item.quantity)} ${escapeHtml(item.measurement)}</span>
             </div>
-          </div>
+          `).join('')}
         ` : ''}
         
         ${checkIn.chargeMaterials.length > 0 ? `
-          <div class="form-section">
-            <div class="subsection-title">Charge Materials Received:</div>
-            <div class="material-list">
-              ${checkIn.chargeMaterials.map(item => `
-                <div class="material-item">
-                  <span class="material-name">${escapeHtml(item.materialName)}</span>
-                  <span class="material-quantity">${escapeHtml(item.quantity)} ${escapeHtml(item.measurement)}</span>
-                </div>
-              `).join('')}
+          <div class="subsection-header">Charge Materials:</div>
+          ${checkIn.chargeMaterials.map(item => `
+            <div class="material-line">
+              <span class="material-name">${escapeHtml(item.materialName)}</span>
+              <span class="material-qty">${escapeHtml(item.quantity)} ${escapeHtml(item.measurement)}</span>
             </div>
-          </div>
+          `).join('')}
         ` : ''}
         
         <!-- Notes Section -->
         ${checkIn.suspectedValueNote ? `
-          <div class="notes-section">
-            <div class="notes-label">Is there anything else of suspected value in this load?</div>
-            <div class="notes-box">
-              <div class="notes-content">${escapeHtml(checkIn.suspectedValueNote)}</div>
-            </div>
-          </div>
+          <div class="notes-label">Is there anything else of suspected value in this load?</div>
+          <div class="notes-box">${escapeHtml(checkIn.suspectedValueNote)}</div>
         ` : ''}
         
         ${checkIn.otherNotes ? `
-          <div class="notes-section">
-            <div class="notes-label">Other Notes / Damages / Customer Requests:</div>
-            <div class="notes-box">
-              <div class="notes-content">${escapeHtml(checkIn.otherNotes)}</div>
-            </div>
-          </div>
+          <div class="notes-label">Other Notes / Damages:</div>
+          <div class="notes-box">${escapeHtml(checkIn.otherNotes)}</div>
         ` : ''}
       </body>
     </html>
@@ -475,7 +420,7 @@ const generateMainSheetHTML = (
 
 /**
  * Generate the i-Series sheet HTML (Page 2)
- * This matches the exact formatting of the handwritten template
+ * This is an EXACT carbon copy of the handwritten template
  */
 const generateISeriesSheetHTML = (
   checkIn: CheckInFormData,
@@ -491,6 +436,11 @@ const generateISeriesSheetHTML = (
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
         <style>
+          @page {
+            size: letter;
+            margin: 0.4in 0.5in;
+          }
+          
           * {
             margin: 0;
             padding: 0;
@@ -499,135 +449,114 @@ const generateISeriesSheetHTML = (
           
           body {
             font-family: 'Courier New', Courier, monospace;
-            font-size: 10pt;
-            padding: 0.5in;
-            line-height: 1.4;
+            font-size: 9pt;
+            line-height: 1.3;
             color: #000;
           }
           
           .header {
             text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 3px double #000;
+            margin-bottom: 12pt;
           }
           
           .header h1 {
-            font-size: 14pt;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-          }
-          
-          .section-title {
-            font-weight: bold;
             font-size: 11pt;
-            margin-bottom: 10px;
-            margin-top: 15px;
-            text-decoration: underline;
-            text-transform: uppercase;
-          }
-          
-          .subsection-title {
             font-weight: bold;
-            font-size: 10pt;
-            margin-top: 15px;
-            margin-bottom: 8px;
+            margin: 0;
+            padding: 0;
           }
           
-          .instruction-text {
+          .section-header {
+            font-weight: bold;
             font-size: 9pt;
+            margin-top: 10pt;
+            margin-bottom: 6pt;
+          }
+          
+          .subsection-header {
+            font-weight: normal;
+            font-size: 9pt;
+            margin-top: 8pt;
+            margin-bottom: 4pt;
+          }
+          
+          .instruction {
+            font-size: 8pt;
             font-style: italic;
-            color: #555;
-            margin-bottom: 12px;
-            text-transform: uppercase;
+            margin-bottom: 6pt;
           }
           
           .iseries-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 10px 0 20px 0;
-            border: 2px solid #000;
+            margin-top: 4pt;
+            margin-bottom: 12pt;
           }
           
-          .iseries-table th,
           .iseries-table td {
             border: 1px solid #000;
-            padding: 6px 8px;
-            text-align: left;
-          }
-          
-          .iseries-table th {
-            background-color: #e8e8e8;
-            font-weight: bold;
-            text-transform: uppercase;
+            padding: 3pt 4pt;
             font-size: 9pt;
           }
           
-          .iseries-table td {
-            font-size: 10pt;
+          .iseries-table .header-cell {
+            font-weight: bold;
+            text-align: center;
           }
           
           .empty-message {
-            padding: 20px;
             text-align: center;
-            color: #999;
             font-style: italic;
-            border: 2px dashed #ccc;
-            margin-top: 20px;
+            color: #666;
+            margin-top: 24pt;
+            padding: 12pt;
+            border: 1px dashed #999;
           }
         </style>
       </head>
       <body>
+        <!-- Header -->
         <div class="header">
           <h1>i-Series / Ryzen PCs and Laptops Breakdown</h1>
         </div>
         
-        <div class="section-title">Material Received:</div>
-        <div class="instruction-text">ANY I-SERIES OR RYZEN PCs OR LAPTOPS NEED TO BE ADDED HERE</div>
+        <div class="section-header">Material Received:</div>
+        <div class="instruction">ANY I-SERIES OR RYZEN PCs OR LAPTOPS NEED TO BE ADDED HERE</div>
         
         ${hasISeriesData ? `
           ${checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0 ? `
-            <div class="subsection-title">PCs:</div>
+            <div class="subsection-header">PCs:</div>
             <table class="iseries-table">
-              <thead>
+              <tr>
+                <td class="header-cell" style="width: 40%;">Processor Series</td>
+                <td class="header-cell" style="width: 40%;">Generation</td>
+                <td class="header-cell" style="width: 20%;">Quantity</td>
+              </tr>
+              ${checkIn.iSeriesPcs.map(item => `
                 <tr>
-                  <th>Processor Series</th>
-                  <th>Generation</th>
-                  <th style="width: 120px;">Quantity</th>
+                  <td>${escapeHtml(item.processorSeries)}</td>
+                  <td>${escapeHtml(item.processorGeneration)}</td>
+                  <td style="text-align: center;">${escapeHtml(item.quantity)}</td>
                 </tr>
-              </thead>
-              <tbody>
-                ${checkIn.iSeriesPcs.map(item => `
-                  <tr>
-                    <td>${escapeHtml(item.processorSeries)}</td>
-                    <td>${escapeHtml(item.processorGeneration)}</td>
-                    <td>${escapeHtml(item.quantity)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
+              `).join('')}
             </table>
           ` : ''}
           
           ${checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0 ? `
-            <div class="subsection-title">Laptops:</div>
+            <div class="subsection-header">Laptops:</div>
             <table class="iseries-table">
-              <thead>
+              <tr>
+                <td class="header-cell" style="width: 40%;">Processor Series</td>
+                <td class="header-cell" style="width: 40%;">Generation</td>
+                <td class="header-cell" style="width: 20%;">Quantity</td>
+              </tr>
+              ${checkIn.iSeriesLaptops.map(item => `
                 <tr>
-                  <th>Processor Series</th>
-                  <th>Generation</th>
-                  <th style="width: 120px;">Quantity</th>
+                  <td>${escapeHtml(item.processorSeries)}</td>
+                  <td>${escapeHtml(item.processorGeneration)}</td>
+                  <td style="text-align: center;">${escapeHtml(item.quantity)}</td>
                 </tr>
-              </thead>
-              <tbody>
-                ${checkIn.iSeriesLaptops.map(item => `
-                  <tr>
-                    <td>${escapeHtml(item.processorSeries)}</td>
-                    <td>${escapeHtml(item.processorGeneration)}</td>
-                    <td>${escapeHtml(item.quantity)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
+              `).join('')}
             </table>
           ` : ''}
         ` : `
@@ -922,7 +851,7 @@ export const generateMultipleCheckInsPDF = async (
       'Export Error',
       'An error occurred while exporting PDFs. Please try again.',
       [{ text: 'OK' }]
-      );
+    );
     throw error;
   }
 };
