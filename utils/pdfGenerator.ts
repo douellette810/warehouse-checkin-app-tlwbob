@@ -4,7 +4,6 @@ import { shareAsync } from 'expo-sharing';
 import { CheckInFormData } from '@/types/checkIn';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
-import { Asset } from 'expo-asset';
 
 /**
  * PDF Template Configuration
@@ -138,21 +137,11 @@ const calculateDuration = (startedAt: string | null, finishedAt: string | null):
     const durationMs = finish.getTime() - start.getTime();
     const hours = Math.floor(durationMs / 3600000);
     const minutes = Math.floor((durationMs % 3600000) / 60000);
-    return `${hours}h ${minutes}m`;
+    return `${hours}.${minutes} Hours`;
   } catch (error) {
     console.error('Error calculating duration:', error);
     return '';
   }
-};
-
-/**
- * Pad a string to a specific length with spaces
- * This helps maintain the layout spacing when replacing placeholder lines
- */
-const padToLength = (text: string, targetLength: number): string => {
-  if (text.length >= targetLength) return text;
-  const spacesNeeded = targetLength - text.length;
-  return text + ' '.repeat(spacesNeeded);
 };
 
 /**
@@ -263,168 +252,183 @@ const generateHTMLFromTemplate = async (
     // Read the HTML template
     let html = await readHTMLTemplate();
     
+    console.log('Starting HTML generation for:', checkIn.companyName);
+    
     // Format date and time
     const { date, time } = formatDateTime(checkIn.startedAt);
     const duration = calculateDuration(checkIn.startedAt, checkIn.finishedAt);
     
-    // Replace basic info - maintaining spacing with underscores
-    const nameLineLength = 21; // Length of "Name_____________________"
-    const dateLineLength = 9;  // Length of "Date _________"
-    const timeLineLength = 8;  // Length of "Time________"
-    const totalTimeLineLength = 14; // Length of "______________Hours"
+    // Replace basic info line - use non-breaking spaces for better spacing
+    const nameValue = escapeHtml(checkIn.employeeName) || '';
+    const dateValue = escapeHtml(date) || '';
+    const timeValue = escapeHtml(time) || '';
+    const totalTimeValue = escapeHtml(checkIn.totalTime || duration) || '';
     
-    const nameLine = `Name ${padToLength(escapeHtml(checkIn.employeeName), nameLineLength - 5)}`;
-    const dateLine = `Date ${padToLength(escapeHtml(date), dateLineLength - 5)}`;
-    const timeLine = `Time ${padToLength(escapeHtml(time), timeLineLength - 5)}`;
-    const totalTimeLine = `Total Time Out and Back ${padToLength(escapeHtml(checkIn.totalTime || duration), totalTimeLineLength - 5)}Hours`;
+    // Build the info line with proper spacing using &nbsp; (non-breaking spaces)
+    const infoLine = `Name ${nameValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Date ${dateValue}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Time ${timeValue} Total Time Out and Back ${totalTimeValue}`;
     
-    // Replace the entire line with proper spacing
     html = html.replace(
       /Name_____________________\s+Date _________\s+Time________\s+Total Time Out and Back ______________Hours/,
-      `${nameLine}        ${dateLine}          ${timeLine} ${totalTimeLine}`
+      infoLine
     );
     
     // Replace company info
-    const companyLineLength = 56; // Length of underscores in "Company of Origin: ________________________________________________________"
-    const addressLineLength = 65; // Length of underscores in "Address: _________________________________________________________________"
-    const contactLineLength = 21; // Length of underscores in "Contact Person: _____________________"
-    const emailLineLength = 30; // Length of underscores in "EMAIL: ______________________________"
-    const phoneLineLength = 30; // Length of underscores in "PHONE: ______________________________"
-    
     html = html.replace(
       /Company of Origin: ________________________________________________________/,
-      `Company of Origin: ${padToLength(escapeHtml(checkIn.companyName), companyLineLength)}`
+      `Company of Origin: ${escapeHtml(checkIn.companyName)}`
     );
     
     html = html.replace(
       /Address: _________________________________________________________________/,
-      `Address: ${padToLength(escapeHtml(checkIn.address), addressLineLength)}`
+      `Address: ${escapeHtml(checkIn.address)}`
     );
     
     html = html.replace(
       /Contact Person: _____________________\s+EMAIL: ______________________________/,
-      `Contact Person: ${padToLength(escapeHtml(checkIn.contactPerson), contactLineLength)}     EMAIL: ${padToLength(escapeHtml(checkIn.email), emailLineLength)}`
+      `Contact Person: ${escapeHtml(checkIn.contactPerson)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EMAIL: ${escapeHtml(checkIn.email)}`
     );
     
     html = html.replace(
       /PHONE: ______________________________/,
-      `PHONE: ${padToLength(escapeHtml(checkIn.phone), phoneLineLength)}`
+      `PHONE: ${escapeHtml(checkIn.phone)}`
     );
     
     // Replace categories section
     if (checkIn.categories && checkIn.categories.length > 0) {
-      let categoriesHTML = '';
+      let categoriesText = '';
       checkIn.categories.forEach((item, index) => {
-        const categoryText = `${escapeHtml(item.category)}: ${escapeHtml(item.quantity)}`;
-        categoriesHTML += categoryText;
+        categoriesText += `${escapeHtml(item.category)}: ${escapeHtml(item.quantity)}`;
         if (index < checkIn.categories.length - 1) {
-          categoriesHTML += ', ';
+          categoriesText += ', ';
         }
       });
       
-      // Replace the long line of underscores with the categories
       html = html.replace(
         /_____________________________________________________________________________________________________________________________________________/,
-        padToLength(categoriesHTML, 141)
+        categoriesText
       );
     }
     
     // Replace Value Scrap section
+    console.log('Processing Value Scrap section, items:', checkIn.valueScrap?.length || 0);
+    
     if (checkIn.valueScrap && checkIn.valueScrap.length > 0) {
-      // Find the Value Scrap section
-      const valueScrapSectionStart = html.indexOf('<p class="p1"><span class="s2"><b>Value Scrap</b>');
-      const valueScrapSectionEnd = html.indexOf('<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b>');
+      // Build the new Value Scrap entries HTML
+      let valueScrapEntriesHTML = '';
       
-      if (valueScrapSectionStart !== -1 && valueScrapSectionEnd !== -1) {
-        // Build the new Value Scrap section
-        let valueScrapHTML = '<p class="p1"><span class="s2"><b>Value Scrap</b><b></b></span></p>\n';
-        valueScrapHTML += '<p class="p3"><span class="s1"> <span class="Apple-tab-span">\t</span><span class="Apple-tab-span">\t</span><span class="Apple-tab-span">\t</span><span class="Apple-tab-span">\t</span></span></p>\n';
-        valueScrapHTML += '<p class="p3"><span class="s1"> </span></p>\n';
+      checkIn.valueScrap.forEach((item, index) => {
+        console.log(`Value Scrap item ${index}:`, item.materialName, item.quantity, item.measurement);
         
-        // Add each value scrap entry
-        checkIn.valueScrap.forEach((item, index) => {
-          const entryText = `${escapeHtml(item.materialName)} ${padToLength('', 9)} ${escapeHtml(item.measurement)}.`;
-          const lineLength = 30; // Approximate length of "Example Entry _________ Lbs."
-          const paddedEntry = padToLength(entryText, lineLength);
-          
-          valueScrapHTML += `<p class="p3"><span class="s1">${paddedEntry}</span></p>\n`;
-          
-          // Add spacing between entries (empty line)
-          if (index < checkIn.valueScrap.length - 1) {
-            valueScrapHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
-          }
-        });
+        // Create entry with proper spacing between name and measurement
+        // Use &nbsp; for spacing to ensure it renders properly
+        const entryText = `${escapeHtml(item.materialName)} ${escapeHtml(item.quantity)}&nbsp;${escapeHtml(item.measurement)}.`;
         
-        valueScrapHTML += '<p class="p8"><span class="s1"><b> </b><b></b></span></p>\n';
-        valueScrapHTML += '<p class="p1"><span class="s1"><b> </b><b></b></span></p>\n';
+        valueScrapEntriesHTML += `<p class="p3"><span class="s1">${entryText}</span></p>\n`;
         
-        // Replace the section
-        const beforeSection = html.substring(0, valueScrapSectionStart);
-        const afterSection = html.substring(valueScrapSectionEnd);
-        html = beforeSection + valueScrapHTML + afterSection;
+        // Add spacing line between entries (except after the last one)
+        if (index < checkIn.valueScrap.length - 1) {
+          valueScrapEntriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
+        }
+      });
+      
+      console.log('Generated Value Scrap HTML length:', valueScrapEntriesHTML.length);
+      
+      // Find and replace the example entries in the Value Scrap section
+      // We need to replace from the first "Example Entry" to just before "i-Series PCs and Laptops"
+      const valueScrapStartMarker = '<p class="p3"><span class="s1">Example Entry _________ Lbs.</span></p>';
+      const valueScrapEndMarker = '<p class="p8"><span class="s1"><b> </b><b></b></span></p>';
+      
+      const startIndex = html.indexOf(valueScrapStartMarker);
+      const endIndex = html.indexOf(valueScrapEndMarker);
+      
+      if (startIndex !== -1 && endIndex !== -1) {
+        console.log('Found Value Scrap section markers');
+        const beforeSection = html.substring(0, startIndex);
+        const afterSection = html.substring(endIndex);
+        
+        html = beforeSection + valueScrapEntriesHTML + afterSection;
+        console.log('Replaced Value Scrap section');
+      } else {
+        console.log('Could not find Value Scrap section markers');
       }
     }
     
     // Replace i-Series section
+    console.log('Processing i-Series section');
+    console.log('i-Series PCs:', checkIn.iSeriesPcs?.length || 0);
+    console.log('i-Series Laptops:', checkIn.iSeriesLaptops?.length || 0);
+    
     if ((checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) || 
         (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0)) {
       
-      // Find the i-Series section
-      const iSeriesSectionStart = html.indexOf('<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b>');
-      const iSeriesSectionEnd = html.indexOf('</body>');
+      // Build the new i-Series entries HTML
+      let iSeriesEntriesHTML = '';
       
-      if (iSeriesSectionStart !== -1 && iSeriesSectionEnd !== -1) {
-        // Build the new i-Series section
-        let iSeriesHTML = '<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b><b></b></span></p>\n';
-        iSeriesHTML += '<p class="p2"><span class="s1"> </span></p>\n';
-        iSeriesHTML += '<p class="p3"><span class="s1"><b>Material Received:</b><b></b></span></p>\n';
-        iSeriesHTML += '<p class="p3"><span class="s1"> </span></p>\n';
+      // Add PCs
+      if (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) {
+        checkIn.iSeriesPcs.forEach((item, index) => {
+          console.log(`i-Series PC ${index}:`, item.processorSeries, item.processorGeneration, item.quantity);
+          
+          const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)} ${escapeHtml(item.quantity)}&nbsp;Pcs.`;
+          
+          iSeriesEntriesHTML += `<p class="p3"><span class="s1">${entryText}</span></p>\n`;
+          
+          // Add spacing line between entries
+          if (index < checkIn.iSeriesPcs.length - 1) {
+            iSeriesEntriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
+          }
+        });
+      }
+      
+      // Add spacing between PCs and Laptops if both exist
+      if (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0 && 
+          checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0) {
+        iSeriesEntriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
+      }
+      
+      // Add Laptops
+      if (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0) {
+        checkIn.iSeriesLaptops.forEach((item, index) => {
+          console.log(`i-Series Laptop ${index}:`, item.processorSeries, item.processorGeneration, item.quantity);
+          
+          const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)} ${escapeHtml(item.quantity)}&nbsp;Pcs.`;
+          
+          iSeriesEntriesHTML += `<p class="p3"><span class="s1">${entryText}</span></p>\n`;
+          
+          // Add spacing line between entries (except after the last one)
+          if (index < checkIn.iSeriesLaptops.length - 1) {
+            iSeriesEntriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
+          }
+        });
+      }
+      
+      console.log('Generated i-Series HTML length:', iSeriesEntriesHTML.length);
+      
+      // Find and replace the example entries in the i-Series section
+      const iSeriesStartMarker = '<p class="p3"><span class="s1">Example Entry _________ Pcs.</span></p>';
+      const iSeriesEndMarker = '<p class="p3"><span class="s1"><b> </b><b></b></span></p>';
+      
+      // Find the first occurrence after "i-Series PCs and Laptops"
+      const iSeriesTitleIndex = html.indexOf('<p class="p1"><span class="s1"><b>i-Series PCs and Laptops</b>');
+      if (iSeriesTitleIndex !== -1) {
+        const searchStart = iSeriesTitleIndex;
+        const startIndex = html.indexOf(iSeriesStartMarker, searchStart);
+        const endIndex = html.indexOf(iSeriesEndMarker, searchStart);
         
-        // Add PCs
-        if (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0) {
-          checkIn.iSeriesPcs.forEach((item, index) => {
-            const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)} ${padToLength('', 9)} ${escapeHtml(item.quantity)} Pcs.`;
-            const lineLength = 30;
-            const paddedEntry = padToLength(entryText, lineLength);
-            
-            iSeriesHTML += `<p class="p3"><span class="s1">${paddedEntry}</span></p>\n`;
-            
-            if (index < checkIn.iSeriesPcs.length - 1) {
-              iSeriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
-            }
-          });
+        if (startIndex !== -1 && endIndex !== -1) {
+          console.log('Found i-Series section markers');
+          const beforeSection = html.substring(0, startIndex);
+          const afterSection = html.substring(endIndex);
+          
+          html = beforeSection + iSeriesEntriesHTML + afterSection;
+          console.log('Replaced i-Series section');
+        } else {
+          console.log('Could not find i-Series section markers');
         }
-        
-        // Add spacing between PCs and Laptops
-        if (checkIn.iSeriesPcs && checkIn.iSeriesPcs.length > 0 && 
-            checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0) {
-          iSeriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
-        }
-        
-        // Add Laptops
-        if (checkIn.iSeriesLaptops && checkIn.iSeriesLaptops.length > 0) {
-          checkIn.iSeriesLaptops.forEach((item, index) => {
-            const entryText = `${escapeHtml(item.processorSeries)} ${escapeHtml(item.processorGeneration)} ${padToLength('', 9)} ${escapeHtml(item.quantity)} Pcs.`;
-            const lineLength = 30;
-            const paddedEntry = padToLength(entryText, lineLength);
-            
-            iSeriesHTML += `<p class="p3"><span class="s1">${paddedEntry}</span></p>\n`;
-            
-            if (index < checkIn.iSeriesLaptops.length - 1) {
-              iSeriesHTML += '<p class="p5"><span class="s1"></span><br></p>\n';
-            }
-          });
-        }
-        
-        iSeriesHTML += '<p class="p3"><span class="s1"><b> </b><b></b></span></p>\n';
-        iSeriesHTML += '<p class="p3"><span class="s1"> </span></p>\n';
-        
-        // Replace the section
-        const beforeSection = html.substring(0, iSeriesSectionStart);
-        html = beforeSection + iSeriesHTML + '\n</body>\n</html>';
       }
     }
     
+    console.log('HTML generation complete');
     return html;
   } catch (error) {
     console.error('Error generating HTML from template:', error);
@@ -446,6 +450,8 @@ export const generateCheckInPDF = async (
     
     // Generate HTML from template
     const html = await generateHTMLFromTemplate(checkIn, finalConfig);
+    
+    console.log('Generated HTML length:', html.length);
     
     // Generate PDF with error handling
     console.log('Calling Print.printToFileAsync...');
