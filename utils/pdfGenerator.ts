@@ -112,17 +112,17 @@ const formatDateForFilename = (dateString: string | null): string => {
  * Sanitize filename to remove invalid characters
  */
 const sanitizeFilename = (filename: string): string => {
-  return filename.replace(/[^a-z0-9\s\-_()]/gi, '').replace(/\s+/g, ' ').trim();
+  return filename.replace(/[^a-z0-9\s\-_]/gi, '').replace(/\s+/g, ' ').trim();
 };
 
 /**
  * Generate filename based on company name and date
- * Format: "(Company Name) Check-In Sheet (Date).pdf"
+ * Format: "Company Name Check-In Sheet Date.pdf"
  */
 const generateFilename = (checkIn: CheckInFormData): string => {
   const companyName = sanitizeFilename(checkIn.companyName || 'Unknown Company');
   const date = formatDateForFilename(checkIn.startedAt);
-  return `(${companyName}) Check-In Sheet (${date}).pdf`;
+  return `${companyName} Check-In Sheet ${date}.pdf`;
 };
 
 /**

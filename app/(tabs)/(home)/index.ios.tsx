@@ -5,8 +5,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Modal,
-  TextInput,
   Alert,
   ScrollView,
   ActivityIndicator,
@@ -21,9 +19,6 @@ const STORAGE_KEY_USER = '@warehouse_current_user';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
   const [isCheckingConnection, setIsCheckingConnection] = useState(true);
 
@@ -87,7 +82,8 @@ export default function HomeScreen() {
       return;
     }
     
-    setShowAdminLogin(true);
+    // Navigate directly to admin panel (no login modal needed)
+    router.push('/(tabs)/profile');
   };
 
   const handleUserSettingsPress = () => {
@@ -108,18 +104,6 @@ export default function HomeScreen() {
     }
     
     router.push('/(tabs)/user-settings');
-  };
-
-  const handleAdminLogin = () => {
-    // Default credentials
-    if (username === 'admin' && password === 'password') {
-      setShowAdminLogin(false);
-      setUsername('');
-      setPassword('');
-      router.push('/(tabs)/profile');
-    } else {
-      Alert.alert('Login Failed', 'Invalid username or password');
-    }
   };
 
   const handleLogout = async () => {
@@ -354,58 +338,6 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
-
-      <Modal
-        visible={showAdminLogin}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAdminLogin(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Admin Login</Text>
-            <Text style={styles.modalSubtitle}>
-              Enter your credentials to access the admin panel
-            </Text>
-
-            <TextInput
-              style={styles.input}
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Username"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              placeholderTextColor={colors.textSecondary}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <TouchableOpacity style={styles.loginButton} onPress={handleAdminLogin}>
-              <Text style={styles.loginButtonText}>Login</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => {
-                setShowAdminLogin(false);
-                setUsername('');
-                setPassword('');
-              }}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -576,65 +508,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     marginLeft: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 16,
-  },
-  loginButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  loginButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  cancelButton: {
-    backgroundColor: colors.border,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
   },
 });
